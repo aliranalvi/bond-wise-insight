@@ -100,9 +100,9 @@ export const BondChart: React.FC<BondChartProps> = ({ pivotData }) => {
   return (
     <Card className="shadow-medium bg-gradient-card border-0 mb-6">
       <CardHeader>
-        <CardTitle className="text-xl font-bold">Investment Timeline by Issuer</CardTitle>
+        <CardTitle className="text-xl font-bold">Active Investment Timeline by Issuer</CardTitle>
         <CardDescription>
-          Monthly investment amounts grouped by bond issuer
+          Monthly active investment amounts grouped by bond issuer (excludes matured bonds)
         </CardDescription>
       </CardHeader>
       <CardContent>

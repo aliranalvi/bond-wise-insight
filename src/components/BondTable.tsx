@@ -88,9 +88,9 @@ export const BondTable: React.FC<BondTableProps> = ({ pivotData, bondData }) => 
   return (
     <Card className="shadow-medium bg-gradient-card border-0">
       <CardHeader>
-        <CardTitle className="text-xl font-bold">Investment Details</CardTitle>
+        <CardTitle className="text-xl font-bold">Active Investment Details</CardTitle>
         <CardDescription>
-          Detailed breakdown by issuer and bond name across investment periods
+          Detailed breakdown by issuer across investment periods (excludes matured bonds)
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -98,36 +98,30 @@ export const BondTable: React.FC<BondTableProps> = ({ pivotData, bondData }) => 
           <Table>
             <TableHeader>
               <TableRow className="border-border">
-                <TableHead className="font-semibold">Issuer / Bond</TableHead>
-                <TableHead className="font-semibold text-right">Total Investment</TableHead>
+                <TableHead className="font-semibold">Bond Issuer</TableHead>
+                <TableHead className="font-semibold text-right">Total Active Investment</TableHead>
                 {allMonthYears.map(monthYear => (
                   <TableHead key={monthYear} className="font-semibold text-right min-w-24">
                     {monthYear}
                   </TableHead>
                 ))}
-                <TableHead className="font-semibold text-center">Status</TableHead>
+                <TableHead className="font-semibold text-center">Active Bonds</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Object.entries(pivotData).sort((a, b) => issuerTotals[b[0]] - issuerTotals[a[0]]).map(([issuer, bonds]) => (
-                <React.Fragment key={issuer}>
-                  {/* Issuer Row */}
-                  <TableRow className="border-border bg-muted/30 hover:bg-muted/50">
+              {Object.entries(pivotData).sort((a, b) => issuerTotals[b[0]] - issuerTotals[a[0]]).map(([issuer, bonds]) => {
+                // Count active bonds for this issuer
+                const activeBondsCount = bondData.filter(bond => 
+                  bond.bondIssuer === issuer && !bond.matured
+                ).length;
+                
+                return (
+                  <TableRow key={issuer} className="border-border bg-muted/30 hover:bg-muted/50">
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleIssuer(issuer)}
-                        className="p-0 h-auto font-semibold text-primary hover:text-primary"
-                      >
-                        {expandedIssuers.has(issuer) ? (
-                          <ChevronDown className="w-4 h-4 mr-1" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 mr-1" />
-                        )}
-                        {issuer}
-                        <TrendingUp className="w-4 h-4 ml-2 text-primary" />
-                      </Button>
+                      <div className="flex items-center space-x-2">
+                        <TrendingUp className="w-4 h-4 text-primary" />
+                        <span className="font-semibold text-primary">{issuer}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right font-semibold text-primary">
                       ₹{issuerTotals[issuer].toLocaleString('en-IN')}
@@ -143,61 +137,14 @@ export const BondTable: React.FC<BondTableProps> = ({ pivotData, bondData }) => 
                       );
                     })}
                     <TableCell className="text-center">
-                      <Badge variant="secondary" className="bg-primary-glow text-primary">
-                        {Object.keys(bonds).length} bonds
+                      <Badge variant="secondary" className="bg-success-glow text-success">
+                        <TrendingUp className="w-3 h-3 mr-1" />
+                        {activeBondsCount} active
                       </Badge>
                     </TableCell>
                   </TableRow>
-                  
-                  {/* Bond Rows (when expanded) */}
-                  {expandedIssuers.has(issuer) && Object.entries(bonds).map(([bondName, monthYearData]) => {
-                    const bondDetails = getBondDetails(bondName);
-                    const bondTotal = Object.values(monthYearData).reduce((sum, amount) => sum + amount, 0);
-                    
-                    return (
-                      <TableRow key={bondName} className="border-border bg-card/50">
-                        <TableCell className="pl-8">
-                          <div className="flex items-center space-x-2">
-                            <div>
-                              <div className="font-medium text-sm">{bondName}</div>
-                              {bondDetails && (
-                                <div className="text-xs text-muted-foreground">
-                                  ISIN: {bondDetails.isin}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          ₹{bondTotal.toLocaleString('en-IN')}
-                        </TableCell>
-                        {allMonthYears.map(monthYear => (
-                          <TableCell key={monthYear} className="text-right">
-                            {monthYearData[monthYear] ? `₹${monthYearData[monthYear].toLocaleString('en-IN')}` : '-'}
-                          </TableCell>
-                        ))}
-                        <TableCell className="text-center">
-                          {bondDetails && (
-                            <div className="flex items-center justify-center space-x-1">
-                              {bondDetails.matured ? (
-                                <Badge variant="secondary" className="bg-warning-glow text-warning">
-                                  <Calendar className="w-3 h-3 mr-1" />
-                                  Matured
-                                </Badge>
-                              ) : (
-                                <Badge variant="secondary" className="bg-success-glow text-success">
-                                  <TrendingUp className="w-3 h-3 mr-1" />
-                                  Active
-                                </Badge>
-                              )}
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </React.Fragment>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -206,25 +153,27 @@ export const BondTable: React.FC<BondTableProps> = ({ pivotData, bondData }) => 
         <div className="mt-6 p-4 bg-primary-glow/10 rounded-xl">
           <h4 className="font-semibold mb-3 text-primary flex items-center">
             <AlertCircle className="w-4 h-4 mr-2" />
-            Summary Statistics
+            Active Portfolio Summary
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-              <p className="text-muted-foreground">Total Issuers</p>
+              <p className="text-muted-foreground">Active Issuers</p>
               <p className="font-semibold">{Object.keys(pivotData).length}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Total Bonds</p>
-              <p className="font-semibold">{bondData.length}</p>
+              <p className="text-muted-foreground">Active Bonds</p>
+              <p className="font-semibold">{bondData.filter(bond => !bond.matured).length}</p>
             </div>
             <div>
               <p className="text-muted-foreground">Investment Periods</p>
               <p className="font-semibold">{allMonthYears.length}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Avg XIRR</p>
+              <p className="text-muted-foreground">Avg XIRR (Active)</p>
               <p className="font-semibold">
-                {(bondData.reduce((sum, bond) => sum + bond.xirr, 0) / bondData.length).toFixed(2)}%
+                {bondData.filter(bond => !bond.matured).length > 0 
+                  ? (bondData.filter(bond => !bond.matured).reduce((sum, bond) => sum + bond.xirr, 0) / bondData.filter(bond => !bond.matured).length).toFixed(2)
+                  : '0.00'}%
               </p>
             </div>
           </div>

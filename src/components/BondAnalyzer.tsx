@@ -40,12 +40,24 @@ export const BondAnalyzer = () => {
   const { toast } = useToast();
 
   const extractBondIssuer = (bondName: string): string => {
-    // Remove numeric suffixes and clean up the issuer name
-    return bondName.replace(/-\d+$/, '').replace(/\s+\d+$/, '').trim();
+    // Remove numeric suffixes, date patterns, and clean up the issuer name
+    return bondName
+      .replace(/-\d+(\s+[A-Za-z]+'\d+)?$/, '') // Remove "-2 Jul'23" or "-2" patterns
+      .replace(/\s+[A-Za-z]+'\d+$/, '') // Remove " Jul'23" patterns  
+      .replace(/\s+\d+$/, '') // Remove trailing numbers
+      .trim();
   };
 
   const formatMonthYear = (dateStr: string): string => {
     try {
+      // Handle DD/MM/YYYY format
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      }
+      // Fallback for other formats
       const date = new Date(dateStr);
       return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     } catch {
@@ -55,6 +67,15 @@ export const BondAnalyzer = () => {
 
   const isMatured = (maturityDateStr: string): boolean => {
     try {
+      // Handle DD/MM/YYYY format
+      const parts = maturityDateStr.split('/');
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        const maturityDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        const today = new Date();
+        return maturityDate < today;
+      }
+      // Fallback for other formats
       const maturityDate = new Date(maturityDateStr);
       const today = new Date();
       return maturityDate < today;
@@ -159,20 +180,23 @@ export const BondAnalyzer = () => {
   const generatePivotData = (data: BondData[]): PivotData => {
     const pivot: PivotData = {};
     
-    data.forEach(bond => {
+    // Only include active (non-matured) investments
+    const activeData = data.filter(bond => !bond.matured);
+    
+    activeData.forEach(bond => {
       if (!pivot[bond.bondIssuer]) {
         pivot[bond.bondIssuer] = {};
       }
       
-      if (!pivot[bond.bondIssuer][bond.bondName]) {
-        pivot[bond.bondIssuer][bond.bondName] = {};
+      if (!pivot[bond.bondIssuer][bond.bondIssuer]) {
+        pivot[bond.bondIssuer][bond.bondIssuer] = {};
       }
       
-      if (!pivot[bond.bondIssuer][bond.bondName][bond.monthYear]) {
-        pivot[bond.bondIssuer][bond.bondName][bond.monthYear] = 0;
+      if (!pivot[bond.bondIssuer][bond.bondIssuer][bond.monthYear]) {
+        pivot[bond.bondIssuer][bond.bondIssuer][bond.monthYear] = 0;
       }
       
-      pivot[bond.bondIssuer][bond.bondName][bond.monthYear] += bond.investedAmount;
+      pivot[bond.bondIssuer][bond.bondIssuer][bond.monthYear] += bond.investedAmount;
     });
     
     return pivot;
@@ -238,6 +262,8 @@ export const BondAnalyzer = () => {
   const totalInvestment = bondData.reduce((sum, bond) => sum + bond.investedAmount, 0);
   const totalMatured = bondData.filter(bond => bond.matured).length;
   const totalActive = bondData.length - totalMatured;
+  const maturedInvestment = bondData.filter(bond => bond.matured).reduce((sum, bond) => sum + bond.investedAmount, 0);
+  const activeInvestment = totalInvestment - maturedInvestment;
 
   if (!hasData) {
     return (
@@ -314,7 +340,7 @@ export const BondAnalyzer = () => {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
           <Card className="shadow-soft bg-gradient-card border-0">
             <CardContent className="p-4">
               <div className="flex items-center space-x-3">
@@ -346,12 +372,40 @@ export const BondAnalyzer = () => {
           <Card className="shadow-soft bg-gradient-card border-0">
             <CardContent className="p-4">
               <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-success" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Investment</p>
+                  <p className="text-lg font-bold text-success">₹{activeInvestment.toLocaleString('en-IN')}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-soft bg-gradient-card border-0">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
                   <Calendar className="w-5 h-5 text-warning" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Matured Bonds</p>
                   <p className="text-lg font-bold text-warning">{totalMatured}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-soft bg-gradient-card border-0">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-warning" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Matured Investment</p>
+                  <p className="text-lg font-bold text-warning">₹{maturedInvestment.toLocaleString('en-IN')}</p>
                 </div>
               </div>
             </CardContent>
