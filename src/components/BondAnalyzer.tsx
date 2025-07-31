@@ -179,14 +179,21 @@ export const BondAnalyzer = () => {
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('File upload triggered', event.target.files);
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
     
+    console.log('Processing file:', file.name, file.type);
     setIsUploading(true);
     
     try {
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer);
+      
+      console.log('Workbook sheets:', workbook.SheetNames);
       
       // Look for 'Investment Summary Report' sheet or use the first sheet
       let worksheetName = workbook.SheetNames.find(name => 
@@ -194,8 +201,12 @@ export const BondAnalyzer = () => {
         name.toLowerCase().includes('summary')
       ) || workbook.SheetNames[0];
       
+      console.log('Using worksheet:', worksheetName);
+      
       const worksheet = workbook.Sheets[worksheetName];
       const parsedData = cleanAndParseData(worksheet);
+      
+      console.log('Parsed data:', parsedData.length, 'records');
       
       if (parsedData.length === 0) {
         throw new Error('No valid bond data found in the file');
@@ -253,24 +264,26 @@ export const BondAnalyzer = () => {
                 <p className="text-muted-foreground mb-4">
                   Select your Investment Summary Report from Wint Wealth or similar platforms
                 </p>
-                <label htmlFor="file-upload">
-                  <Button 
-                    variant="default" 
-                    size="lg" 
-                    className="cursor-pointer shadow-soft hover:shadow-glow transition-all duration-300"
-                    disabled={isUploading}
-                  >
-                    <Upload className="w-5 h-5 mr-2" />
-                    {isUploading ? 'Processing...' : 'Choose File'}
-                  </Button>
-                </label>
                 <input
                   id="file-upload"
                   type="file"
                   accept=".xlsx,.xls"
                   onChange={handleFileUpload}
-                  className="hidden"
+                  style={{ display: 'none' }}
                 />
+                <Button 
+                  variant="default" 
+                  size="lg" 
+                  className="cursor-pointer shadow-soft hover:shadow-glow transition-all duration-300"
+                  disabled={isUploading}
+                  onClick={() => {
+                    console.log('Button clicked');
+                    document.getElementById('file-upload')?.click();
+                  }}
+                >
+                  <Upload className="w-5 h-5 mr-2" />
+                  {isUploading ? 'Processing...' : 'Choose File'}
+                </Button>
               </div>
             </div>
             
@@ -367,19 +380,24 @@ export const BondAnalyzer = () => {
         
         {/* Upload new file button */}
         <div className="text-center mt-8">
-          <label htmlFor="file-upload-new">
-            <Button variant="outline" className="shadow-soft">
-              <Upload className="w-4 h-4 mr-2" />
-              Upload New File
-            </Button>
-          </label>
           <input
             id="file-upload-new"
             type="file"
             accept=".xlsx,.xls"
             onChange={handleFileUpload}
-            className="hidden"
+            style={{ display: 'none' }}
           />
+          <Button 
+            variant="outline" 
+            className="shadow-soft"
+            onClick={() => {
+              console.log('New file button clicked');
+              document.getElementById('file-upload-new')?.click();
+            }}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Upload New File
+          </Button>
         </div>
       </div>
     </div>
