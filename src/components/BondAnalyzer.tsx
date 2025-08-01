@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
-import { BondChart } from './BondChart';
-import { BondTable } from './BondTable';
+import { BondAnalysisView } from './BondAnalysisView';
 
 interface BondData {
   bondName: string;
@@ -426,11 +425,8 @@ export const BondAnalyzer = () => {
           </Card>
         </div>
         
-        {/* Chart */}
-        <BondChart pivotData={pivotData} />
-        
-        {/* Table */}
-        <BondTable pivotData={pivotData} bondData={bondData} />
+        {/* Combined Chart and Table */}
+        <BondAnalysisView pivotData={pivotData} bondData={bondData} />
         
         {/* Upload new file button */}
         <div className="text-center mt-8">
