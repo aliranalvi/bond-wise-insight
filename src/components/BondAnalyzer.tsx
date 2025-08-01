@@ -330,13 +330,38 @@ export const BondAnalyzer = () => {
     <div className="min-h-screen bg-gradient-soft p-4 space-y-6">
       {/* Header Stats */}
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
-            Bond Portfolio Analysis
-          </h1>
-          <p className="text-muted-foreground">
-            Analysis of {bondData.length} bond investments
-          </p>
+        {/* Header with Upload Button */}
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
+              Bond Portfolio Analysis
+            </h1>
+            <p className="text-muted-foreground">
+              Analysis of {bondData.length} bond investments
+            </p>
+          </div>
+          
+          <div>
+            <input
+              id="file-upload-new"
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+            />
+            <Button 
+              variant="outline" 
+              className="shadow-soft"
+              disabled={isUploading}
+              onClick={() => {
+                console.log('New file button clicked');
+                document.getElementById('file-upload-new')?.click();
+              }}
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              {isUploading ? 'Processing...' : 'Upload New File'}
+            </Button>
+          </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
@@ -427,28 +452,6 @@ export const BondAnalyzer = () => {
         
         {/* Combined Chart and Table */}
         <BondAnalysisView pivotData={pivotData} bondData={bondData} />
-        
-        {/* Upload new file button */}
-        <div className="text-center mt-8">
-          <input
-            id="file-upload-new"
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={handleFileUpload}
-            style={{ display: 'none' }}
-          />
-          <Button 
-            variant="outline" 
-            className="shadow-soft"
-            onClick={() => {
-              console.log('New file button clicked');
-              document.getElementById('file-upload-new')?.click();
-            }}
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            Upload New File
-          </Button>
-        </div>
       </div>
     </div>
   );

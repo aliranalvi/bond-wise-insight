@@ -120,11 +120,20 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
     return Array.from(periods).sort((a, b) => {
       if (durationView === 'Years') {
         return parseInt(a) - parseInt(b);
+      } else if (durationView === 'Quarters') {
+        // Parse quarters like "Q1 2023", "Q2 2023" etc.
+        const parseQuarter = (quarter: string) => {
+          const [q, year] = quarter.split(' ');
+          const quarterNum = parseInt(q.replace('Q', ''));
+          return parseInt(year) * 4 + quarterNum;
+        };
+        return parseQuarter(a) - parseQuarter(b);
+      } else {
+        // For months, parse the date string
+        const dateA = new Date(a);
+        const dateB = new Date(b);
+        return dateA.getTime() - dateB.getTime();
       }
-      // For quarters and months, use date parsing
-      const dateA = durationView === 'Months' ? new Date(a) : new Date(a.split(' ')[1]);
-      const dateB = durationView === 'Months' ? new Date(b) : new Date(b.split(' ')[1]);
-      return dateA.getTime() - dateB.getTime();
     });
   }, [filteredPivotData, durationView]);
 
@@ -327,12 +336,12 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           <div className="border rounded-lg overflow-hidden">
             <div className="overflow-auto max-h-96">
               <Table>
-                <TableHeader className="sticky top-0 bg-muted z-10">
+                <TableHeader>
                   <TableRow className="border-border">
-                    <TableHead className="font-semibold sticky left-0 bg-muted z-20 min-w-48">Bond Issuer</TableHead>
-                    <TableHead className="font-semibold text-right">Total Active Investment</TableHead>
+                    <TableHead className="font-semibold sticky left-0 top-0 bg-muted z-30 min-w-48 border-r border-border">Bond Issuer</TableHead>
+                    <TableHead className="font-semibold text-right sticky top-0 bg-muted z-20 border-r border-border">Total Active Investment</TableHead>
                     {allTimePeriods.map(period => (
-                      <TableHead key={period} className="font-semibold text-right min-w-24">
+                      <TableHead key={period} className="font-semibold text-right min-w-24 sticky top-0 bg-muted z-20">
                         {period}
                       </TableHead>
                     ))}
@@ -347,10 +356,9 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                       <React.Fragment key={issuer}>
                         {/* Issuer Row */}
                         <TableRow className="border-border bg-muted/30 hover:bg-muted/50 cursor-pointer" onClick={() => toggleIssuer(issuer)}>
-                          <TableCell className="sticky left-0 bg-muted/30 hover:bg-muted/50 z-10">
+                          <TableCell className="sticky left-0 bg-muted/30 hover:bg-muted/50 z-20 border-r border-border">
                             <div className="flex items-center space-x-2">
                               {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                              <TrendingUp className="w-4 h-4 text-primary" />
                               <span className="font-semibold text-primary">{issuer}</span>
                               <Badge variant="secondary" className="bg-success-glow text-success text-xs">
                                 {activeBondsCount}
@@ -375,7 +383,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                         {/* Bond Series Rows */}
                         {isExpanded && Object.entries(bonds).map(([bondName, timeData]) => (
                           <TableRow key={bondName} className="border-border bg-background/50">
-                            <TableCell className="sticky left-0 bg-background/50 z-10 pl-8">
+                            <TableCell className="sticky left-0 bg-background/50 z-20 pl-8 border-r border-border">
                               <div className="flex items-center space-x-2">
                                 <Calendar className="w-3 h-3 text-muted-foreground" />
                                 <span className="text-sm">{bondName}</span>
