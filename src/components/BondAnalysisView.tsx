@@ -43,6 +43,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
   const [durationFilter, setDurationFilter] = useState<DurationFilter>('All Time');
   const [durationView, setDurationView] = useState<DurationView>('Months');
   const [expandedIssuers, setExpandedIssuers] = useState<Set<string>>(new Set());
+  const [showChart, setShowChart] = useState<boolean>(false);
 
   const toggleIssuer = (issuer: string) => {
     const newExpanded = new Set(expandedIssuers);
@@ -272,55 +273,66 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                 </Button>
               ))}
             </div>
+            
+            <Button
+              variant={showChart ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowChart(!showChart)}
+              className="text-xs"
+            >
+              {showChart ? "Hide Chart" : "Show Chart"}
+            </Button>
           </div>
         </div>
       </CardHeader>
       
       <CardContent className="space-y-6">
         {/* Chart */}
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={chartData.data}
-              margin={{
-                top: 20,
-                right: 30,
-                left: 20,
-                bottom: 60,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="period" 
-                angle={-45}
-                textAnchor="end"
-                height={80}
-                fontSize={12}
-                stroke="hsl(var(--muted-foreground))"
-              />
-              <YAxis 
-                tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
-                fontSize={12}
-                stroke="hsl(var(--muted-foreground))"
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend 
-                wrapperStyle={{ paddingTop: '20px' }}
-                iconType="rect"
-              />
-              
-              {Object.keys(chartData.colors).map((issuer) => (
-                <Bar
-                  key={issuer}
-                  dataKey={issuer}
-                  stackId="investment"
-                  fill={chartData.colors[issuer]}
-                  radius={[2, 2, 0, 0]}
+        {showChart && (
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={chartData.data}
+                margin={{
+                  top: 20,
+                  right: 30,
+                  left: 20,
+                  bottom: 60,
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis 
+                  dataKey="period" 
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  fontSize={12}
+                  stroke="hsl(var(--muted-foreground))"
                 />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+                <YAxis 
+                  tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
+                  fontSize={12}
+                  stroke="hsl(var(--muted-foreground))"
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend 
+                  wrapperStyle={{ paddingTop: '20px' }}
+                  iconType="rect"
+                />
+                
+                {Object.keys(chartData.colors).map((issuer) => (
+                  <Bar
+                    key={issuer}
+                    dataKey={issuer}
+                    stackId="investment"
+                    fill={chartData.colors[issuer]}
+                    radius={[2, 2, 0, 0]}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
         
         {/* Table */}
         <div className="relative">
@@ -334,14 +346,14 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           </div>
           
           <div className="border rounded-lg overflow-hidden">
-            <div className="overflow-auto max-h-96">
+            <div className="overflow-auto max-h-96 relative">
               <Table>
-                <TableHeader>
-                  <TableRow className="border-border">
-                    <TableHead className="font-semibold sticky left-0 top-0 bg-muted z-30 min-w-48 border-r border-border">Bond Issuer</TableHead>
-                    <TableHead className="font-semibold text-right sticky top-0 bg-muted z-20 border-r border-border">Total Active Investment</TableHead>
+                <TableHeader className="sticky top-0 z-30">
+                  <TableRow className="border-border bg-muted">
+                    <TableHead className="font-semibold sticky left-0 top-0 bg-muted z-40 min-w-48 border-r border-border">Bond Issuer</TableHead>
+                    <TableHead className="font-semibold text-right bg-muted border-r border-border">Total Active Investment</TableHead>
                     {allTimePeriods.map(period => (
-                      <TableHead key={period} className="font-semibold text-right min-w-24 sticky top-0 bg-muted z-20">
+                      <TableHead key={period} className="font-semibold text-right min-w-24 bg-muted">
                         {period}
                       </TableHead>
                     ))}
@@ -356,7 +368,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                       <React.Fragment key={issuer}>
                         {/* Issuer Row */}
                         <TableRow className="border-border bg-muted/30 hover:bg-muted/50 cursor-pointer" onClick={() => toggleIssuer(issuer)}>
-                          <TableCell className="sticky left-0 bg-muted/30 hover:bg-muted/50 z-20 border-r border-border">
+                          <TableCell className="sticky left-0 bg-muted z-20 border-r border-border">
                             <div className="flex items-center space-x-2">
                               {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                               <span className="font-semibold text-primary">{issuer}</span>
@@ -383,7 +395,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                         {/* Bond Series Rows */}
                         {isExpanded && Object.entries(bonds).map(([bondName, timeData]) => (
                           <TableRow key={bondName} className="border-border bg-background/50">
-                            <TableCell className="sticky left-0 bg-background/50 z-20 pl-8 border-r border-border">
+                            <TableCell className="sticky left-0 bg-background z-20 pl-8 border-r border-border">
                               <div className="flex items-center space-x-2">
                                 <Calendar className="w-3 h-3 text-muted-foreground" />
                                 <span className="text-sm">{bondName}</span>
