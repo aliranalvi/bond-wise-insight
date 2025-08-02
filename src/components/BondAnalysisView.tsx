@@ -174,8 +174,14 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
     return totals;
   }, [filteredPivotData]);
 
-  // Calculate average XIRR for all bonds (active and matured)
+  // Calculate average XIRR for filtered data (based on duration selection)
   const avgXirr = useMemo(() => {
+    if (filteredData.length === 0) return 0;
+    return filteredData.reduce((sum, bond) => sum + bond.xirr, 0) / filteredData.length;
+  }, [filteredData]);
+
+  // Calculate overall average XIRR for all bonds (active and matured)
+  const overallAvgXirr = useMemo(() => {
     if (bondData.length === 0) return 0;
     return bondData.reduce((sum, bond) => sum + bond.xirr, 0) / bondData.length;
   }, [bondData]);
@@ -264,9 +270,9 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
       <CardHeader>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <CardTitle className="text-xl font-bold">Active Investment Analysis</CardTitle>
+            <CardTitle className="text-xl font-bold">WintWealth: Bond Portfolio Investment Analysis</CardTitle>
             <CardDescription>
-              Interactive chart and breakdown by issuer (excludes matured bonds)
+              (excludes matured bonds)
             </CardDescription>
           </div>
           
@@ -311,9 +317,15 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
               </div>
             </div>
             
-            <div className="bg-primary-glow/20 px-3 py-1 rounded-lg">
-              <span className="text-sm text-muted-foreground mr-2">Avg XIRR:</span>
-              <span className="font-semibold text-primary">{avgXirr.toFixed(2)}%</span>
+            <div className="flex gap-4">
+              <div className="bg-primary-glow/20 px-3 py-1 rounded-lg">
+                <span className="text-sm text-muted-foreground mr-2">Active Avg XIRR:</span>
+                <span className="font-semibold text-primary">{avgXirr.toFixed(2)}%</span>
+              </div>
+              <div className="bg-primary-glow/20 px-3 py-1 rounded-lg">
+                <span className="text-sm text-muted-foreground mr-2">Overall Avg XIRR:</span>
+                <span className="font-semibold text-primary">{overallAvgXirr.toFixed(2)}%</span>
+              </div>
             </div>
           </div>
         </div>
@@ -322,7 +334,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
       <CardContent className="space-y-6">
         {/* Chart */}
         {showChart && (
-          <div className="h-80">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={chartData.data}
@@ -353,13 +365,6 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                   iconType="rect"
                 />
                 
-                <ReferenceLine 
-                  y={avgInvestment} 
-                  stroke="hsl(var(--destructive))" 
-                  strokeDasharray="5 5" 
-                  strokeWidth={2}
-                  label={{ value: "Avg Investment", position: "insideTopRight" }}
-                />
                 
                 {Object.keys(chartData.colors).map((issuer) => (
                   <Bar
@@ -377,12 +382,9 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
         
         {/* Table */}
           <div className="relative">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-lg font-semibold">Investment Details</h3>
-            </div>
           
           <div className="border rounded-lg overflow-hidden">
-            <div className="overflow-auto max-h-96 relative">
+            <div className="overflow-auto max-h-72 relative">
               <Table>
                 <TableHeader className="sticky top-0 z-30 bg-muted">
                   <TableRow className="border-border bg-muted">
@@ -487,9 +489,9 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                    
                    {/* Total Row */}
                    <TableRow className="border-border bg-primary/10 font-bold">
-                     <TableCell className="sticky left-0 bg-primary/10 z-20 border-r border-border font-bold">
-                       Total
-                     </TableCell>
+                      <TableCell className="sticky left-0 bg-primary z-20 border-r border-border font-bold">
+                        Total
+                      </TableCell>
                      <TableCell className="text-right font-bold text-primary">
                        {formatCurrency(Object.values(issuerTotals).reduce((sum, amount) => sum + amount, 0))}
                      </TableCell>
