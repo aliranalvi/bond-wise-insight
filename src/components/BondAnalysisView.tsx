@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, TrendingUp, Calendar } from 'lucide-react';
+import { ChevronDown, ChevronRight, Calendar, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface BondData {
   bondName: string;
@@ -39,11 +39,16 @@ interface BondAnalysisViewProps {
 type DurationFilter = 'This Year' | 'Last Year' | 'All Time';
 type DurationView = 'Years' | 'Quarters' | 'Months';
 
+type SortField = 'issuer' | 'investment';
+type SortDirection = 'asc' | 'desc';
+
 export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, bondData }) => {
   const [durationFilter, setDurationFilter] = useState<DurationFilter>('All Time');
   const [durationView, setDurationView] = useState<DurationView>('Months');
   const [expandedIssuers, setExpandedIssuers] = useState<Set<string>>(new Set());
   const [showChart, setShowChart] = useState<boolean>(false);
+  const [sortField, setSortField] = useState<SortField>('issuer');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const toggleIssuer = (issuer: string) => {
     const newExpanded = new Set(expandedIssuers);
@@ -53,6 +58,22 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
       newExpanded.add(issuer);
     }
     setExpandedIssuers(newExpanded);
+  };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const formatCurrency = (amount: number): string => {
+    return `₹${amount.toLocaleString('en-IN', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    })}`;
   };
 
   // Filter data based on duration filter
@@ -153,12 +174,17 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
     return totals;
   }, [filteredPivotData]);
 
-  // Calculate average XIRR for active bonds
+  // Calculate average XIRR for all bonds (active and matured)
   const avgXirr = useMemo(() => {
-    const activeBonds = filteredData;
-    if (activeBonds.length === 0) return 0;
-    return activeBonds.reduce((sum, bond) => sum + bond.xirr, 0) / activeBonds.length;
-  }, [filteredData]);
+    if (bondData.length === 0) return 0;
+    return bondData.reduce((sum, bond) => sum + bond.xirr, 0) / bondData.length;
+  }, [bondData]);
+
+  // Calculate average investment per period for chart line
+  const avgInvestment = useMemo(() => {
+    const totalInvestment = Object.values(issuerTotals).reduce((sum, amount) => sum + amount, 0);
+    return totalInvestment / allTimePeriods.length;
+  }, [issuerTotals, allTimePeriods]);
 
   // Chart data
   const chartData = useMemo(() => {
@@ -219,14 +245,14 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
       return (
         <div className="bg-card p-3 rounded-lg shadow-medium border">
           <p className="font-semibold mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} style={{ color: entry.color }} className="text-sm">
-              {entry.dataKey}: ₹{entry.value.toLocaleString('en-IN')}
-            </p>
-          ))}
-          <p className="text-sm font-semibold mt-2 pt-2 border-t">
-            Total: ₹{payload.reduce((sum: number, entry: any) => sum + entry.value, 0).toLocaleString('en-IN')}
-          </p>
+           {payload.map((entry: any, index: number) => (
+             <p key={index} style={{ color: entry.color }} className="text-sm">
+               {entry.dataKey}: {formatCurrency(entry.value)}
+             </p>
+           ))}
+           <p className="text-sm font-semibold mt-2 pt-2 border-t">
+             Total: {formatCurrency(payload.reduce((sum: number, entry: any) => sum + entry.value, 0))}
+           </p>
         </div>
       );
     }
@@ -244,44 +270,51 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
             </CardDescription>
           </div>
           
-          {/* Duration Filters */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex bg-muted rounded-lg p-1">
-              {(['This Year', 'Last Year', 'All Time'] as DurationFilter[]).map((filter) => (
-                <Button
-                  key={filter}
-                  variant={durationFilter === filter ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setDurationFilter(filter)}
-                  className="text-xs"
-                >
-                  {filter}
-                </Button>
-              ))}
+          {/* Duration Filters and KPIs */}
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                variant={showChart ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowChart(!showChart)}
+                className="text-xs h-8"
+              >
+                {showChart ? "Hide Chart" : "Show Chart"}
+              </Button>
+              
+              <div className="flex bg-muted rounded-lg p-1 h-8">
+                {(['This Year', 'Last Year', 'All Time'] as DurationFilter[]).map((filter) => (
+                  <Button
+                    key={filter}
+                    variant={durationFilter === filter ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setDurationFilter(filter)}
+                    className="text-xs h-6"
+                  >
+                    {filter}
+                  </Button>
+                ))}
+              </div>
+              
+              <div className="flex bg-muted rounded-lg p-1 h-8">
+                {(['Years', 'Quarters', 'Months'] as DurationView[]).map((view) => (
+                  <Button
+                    key={view}
+                    variant={durationView === view ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setDurationView(view)}
+                    className="text-xs h-6"
+                  >
+                    {view}
+                  </Button>
+                ))}
+              </div>
             </div>
             
-            <div className="flex bg-muted rounded-lg p-1">
-              {(['Years', 'Quarters', 'Months'] as DurationView[]).map((view) => (
-                <Button
-                  key={view}
-                  variant={durationView === view ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setDurationView(view)}
-                  className="text-xs"
-                >
-                  {view}
-                </Button>
-              ))}
+            <div className="bg-primary-glow/20 px-3 py-1 rounded-lg">
+              <span className="text-sm text-muted-foreground mr-2">Avg XIRR:</span>
+              <span className="font-semibold text-primary">{avgXirr.toFixed(2)}%</span>
             </div>
-            
-            <Button
-              variant={showChart ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowChart(!showChart)}
-              className="text-xs"
-            >
-              {showChart ? "Hide Chart" : "Show Chart"}
-            </Button>
           </div>
         </div>
       </CardHeader>
@@ -320,6 +353,14 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                   iconType="rect"
                 />
                 
+                <ReferenceLine 
+                  y={avgInvestment} 
+                  stroke="hsl(var(--destructive))" 
+                  strokeDasharray="5 5" 
+                  strokeWidth={2}
+                  label={{ value: "Avg Investment", position: "insideTopRight" }}
+                />
+                
                 {Object.keys(chartData.colors).map((issuer) => (
                   <Bar
                     key={issuer}
@@ -335,23 +376,39 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
         )}
         
         {/* Table */}
-        <div className="relative">
-          {/* Table Header with Avg XIRR */}
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-semibold">Investment Details</h3>
-            <div className="bg-primary-glow/20 px-3 py-1 rounded-lg">
-              <span className="text-sm text-muted-foreground mr-2">Avg XIRR:</span>
-              <span className="font-semibold text-primary">{avgXirr.toFixed(2)}%</span>
+          <div className="relative">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-semibold">Investment Details</h3>
             </div>
-          </div>
           
           <div className="border rounded-lg overflow-hidden">
             <div className="overflow-auto max-h-96 relative">
               <Table>
-                <TableHeader className="sticky top-0 z-30">
+                <TableHeader className="sticky top-0 z-30 bg-muted">
                   <TableRow className="border-border bg-muted">
-                    <TableHead className="font-semibold sticky left-0 top-0 bg-muted z-40 min-w-48 border-r border-border">Bond Issuer</TableHead>
-                    <TableHead className="font-semibold text-right bg-muted border-r border-border">Total Active Investment</TableHead>
+                    <TableHead 
+                      className="font-semibold sticky left-0 top-0 bg-muted z-40 min-w-48 border-r border-border cursor-pointer hover:bg-muted/80"
+                      onClick={() => handleSort('issuer')}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span>Bond Issuer</span>
+                        {sortField === 'issuer' && (
+                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="font-semibold text-right bg-muted border-r border-border cursor-pointer hover:bg-muted/80"
+                      onClick={() => handleSort('investment')}
+                    >
+                      <div className="flex items-center justify-end space-x-2">
+                        <span>Investment</span>
+                        {sortField === 'investment' && (
+                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="font-semibold text-center bg-muted border-r border-border min-w-20">Bonds</TableHead>
                     {allTimePeriods.map(period => (
                       <TableHead key={period} className="font-semibold text-right min-w-24 bg-muted">
                         {period}
@@ -360,7 +417,17 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {Object.entries(filteredPivotData).sort((a, b) => issuerTotals[b[0]] - issuerTotals[a[0]]).map(([issuer, bonds]) => {
+                  {Object.entries(filteredPivotData).sort((a, b) => {
+                    if (sortField === 'issuer') {
+                      return sortDirection === 'asc' 
+                        ? a[0].localeCompare(b[0]) 
+                        : b[0].localeCompare(a[0]);
+                    } else {
+                      return sortDirection === 'asc' 
+                        ? issuerTotals[a[0]] - issuerTotals[b[0]] 
+                        : issuerTotals[b[0]] - issuerTotals[a[0]];
+                    }
+                  }).map(([issuer, bonds]) => {
                     const activeBondsCount = filteredData.filter(bond => bond.bondIssuer === issuer).length;
                     const isExpanded = expandedIssuers.has(issuer);
                     
@@ -369,26 +436,28 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                         {/* Issuer Row */}
                         <TableRow className="border-border bg-muted/30 hover:bg-muted/50 cursor-pointer" onClick={() => toggleIssuer(issuer)}>
                           <TableCell className="sticky left-0 bg-muted z-20 border-r border-border">
-                            <div className="flex items-center space-x-2">
-                              {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                              <span className="font-semibold text-primary">{issuer}</span>
-                              <Badge variant="secondary" className="bg-success-glow text-success text-xs">
-                                {activeBondsCount}
-                              </Badge>
-                            </div>
+                           <div className="flex items-center space-x-2">
+                               {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                               <span className="font-semibold text-primary">{issuer}</span>
+                             </div>
                           </TableCell>
-                          <TableCell className="text-right font-semibold text-primary">
-                            ₹{issuerTotals[issuer].toLocaleString('en-IN')}
-                          </TableCell>
-                          {allTimePeriods.map(period => {
+                           <TableCell className="text-right font-semibold text-primary">
+                             {formatCurrency(issuerTotals[issuer])}
+                           </TableCell>
+                           <TableCell className="text-center">
+                             <Badge variant="secondary" className="bg-success-glow text-success text-xs">
+                               {activeBondsCount}
+                             </Badge>
+                           </TableCell>
+                           {allTimePeriods.map(period => {
                             const total = Object.values(bonds).reduce((sum, timeData) => {
                               return sum + (timeData[period] || 0);
                             }, 0);
-                            return (
-                              <TableCell key={period} className="text-right font-medium">
-                                {total > 0 ? `₹${total.toLocaleString('en-IN')}` : '-'}
-                              </TableCell>
-                            );
+                             return (
+                               <TableCell key={period} className="text-right font-medium">
+                                 {total > 0 ? formatCurrency(total) : '-'}
+                               </TableCell>
+                             );
                           })}
                         </TableRow>
                         
@@ -401,20 +470,46 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                                 <span className="text-sm">{bondName}</span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-right text-sm">
-                              ₹{Object.values(timeData).reduce((sum, amount) => sum + amount, 0).toLocaleString('en-IN')}
-                            </TableCell>
-                            {allTimePeriods.map(period => (
-                              <TableCell key={period} className="text-right text-sm">
-                                {timeData[period] ? `₹${timeData[period].toLocaleString('en-IN')}` : '-'}
-                              </TableCell>
-                            ))}
+                             <TableCell className="text-right text-sm">
+                               {formatCurrency(Object.values(timeData).reduce((sum, amount) => sum + amount, 0))}
+                             </TableCell>
+                             <TableCell className="text-center text-sm">-</TableCell>
+                             {allTimePeriods.map(period => (
+                               <TableCell key={period} className="text-right text-sm">
+                                 {timeData[period] ? formatCurrency(timeData[period]) : '-'}
+                               </TableCell>
+                             ))}
                           </TableRow>
                         ))}
                       </React.Fragment>
-                    );
-                  })}
-                </TableBody>
+                     );
+                   })}
+                   
+                   {/* Total Row */}
+                   <TableRow className="border-border bg-primary/10 font-bold">
+                     <TableCell className="sticky left-0 bg-primary/10 z-20 border-r border-border font-bold">
+                       Total
+                     </TableCell>
+                     <TableCell className="text-right font-bold text-primary">
+                       {formatCurrency(Object.values(issuerTotals).reduce((sum, amount) => sum + amount, 0))}
+                     </TableCell>
+                     <TableCell className="text-center font-bold">
+                       {filteredData.length}
+                     </TableCell>
+                     {allTimePeriods.map(period => {
+                       const periodTotal = Object.values(filteredPivotData).reduce((sum, bonds) => {
+                         return sum + Object.values(bonds).reduce((bondSum, timeData) => {
+                           return bondSum + (timeData[period] || 0);
+                         }, 0);
+                       }, 0);
+                       return (
+                         <TableCell key={period} className="text-right font-bold">
+                           {periodTotal > 0 ? formatCurrency(periodTotal) : '-'}
+                         </TableCell>
+                       );
+                     })}
+                   </TableRow>
+                 </TableBody>
               </Table>
             </div>
           </div>
