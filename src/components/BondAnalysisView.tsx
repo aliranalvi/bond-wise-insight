@@ -49,6 +49,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
   const [showChart, setShowChart] = useState<boolean>(false);
   const [sortField, setSortField] = useState<SortField>('issuer');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [tableScrollRef, setTableScrollRef] = useState<HTMLDivElement | null>(null);
 
   const toggleIssuer = (issuer: string) => {
     const newExpanded = new Set(expandedIssuers);
@@ -66,6 +67,20 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
     } else {
       setSortField(field);
       setSortDirection('asc');
+    }
+  };
+
+  const handleDurationChange = (filter: DurationFilter) => {
+    setDurationFilter(filter);
+    if (tableScrollRef) {
+      tableScrollRef.scrollTop = 0;
+    }
+  };
+
+  const handleViewChange = (view: DurationView) => {
+    setDurationView(view);
+    if (tableScrollRef) {
+      tableScrollRef.scrollTop = 0;
     }
   };
 
@@ -276,243 +291,265 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
             </CardDescription>
           </div>
           
-          {/* Duration Filters and KPIs */}
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                variant={showChart ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowChart(!showChart)}
-                className="text-xs h-8"
-              >
-                {showChart ? "Hide Chart" : "Show Chart"}
-              </Button>
-              
-              <div className="flex bg-muted rounded-lg p-1 h-8">
-                {(['This Year', 'Last Year', 'All Time'] as DurationFilter[]).map((filter) => (
-                  <Button
-                    key={filter}
-                    variant={durationFilter === filter ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setDurationFilter(filter)}
-                    className="text-xs h-6"
-                  >
-                    {filter}
-                  </Button>
-                ))}
-              </div>
-              
-              <div className="flex bg-muted rounded-lg p-1 h-8">
-                {(['Years', 'Quarters', 'Months'] as DurationView[]).map((view) => (
-                  <Button
-                    key={view}
-                    variant={durationView === view ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setDurationView(view)}
-                    className="text-xs h-6"
-                  >
-                    {view}
-                  </Button>
-                ))}
-              </div>
+          {/* KPIs */}
+          <div className="flex gap-4">
+            <div className="bg-primary-glow/20 px-3 py-1 rounded-lg">
+              <span className="text-sm text-muted-foreground mr-2">Unique Issuers:</span>
+              <span className="font-semibold text-primary">{Object.keys(filteredPivotData).length}</span>
             </div>
-            
-            <div className="flex gap-4">
-              <div className="bg-primary-glow/20 px-3 py-1 rounded-lg">
-                <span className="text-sm text-muted-foreground mr-2">Active Avg XIRR:</span>
-                <span className="font-semibold text-primary">{avgXirr.toFixed(2)}%</span>
-              </div>
-              <div className="bg-primary-glow/20 px-3 py-1 rounded-lg">
-                <span className="text-sm text-muted-foreground mr-2">Overall Avg XIRR:</span>
-                <span className="font-semibold text-primary">{overallAvgXirr.toFixed(2)}%</span>
-              </div>
+            <div className="bg-primary-glow/20 px-3 py-1 rounded-lg">
+              <span className="text-sm text-muted-foreground mr-2">Overall Avg XIRR:</span>
+              <span className="font-semibold text-primary">{overallAvgXirr.toFixed(2)}%</span>
             </div>
           </div>
         </div>
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {/* Chart */}
-        {showChart && (
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartData.data}
-                margin={{
-                  top: 20,
-                  right: 30,
-                  left: 20,
-                  bottom: 60,
-                }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis 
-                  dataKey="period" 
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                  fontSize={12}
-                  stroke="hsl(var(--muted-foreground))"
-                />
-                <YAxis 
-                  tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
-                  fontSize={12}
-                  stroke="hsl(var(--muted-foreground))"
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend 
-                  wrapperStyle={{ paddingTop: '20px' }}
-                  iconType="rect"
-                />
+        {/* Active Investment Analysis Section */}
+        <div className="space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold">Active Investment Analysis</h3>
+              <p className="text-sm text-muted-foreground">
+                Interactive chart and breakdown by issuer
+              </p>
+            </div>
+            
+            {/* Duration Filters and Controls */}
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  variant={showChart ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowChart(!showChart)}
+                  className="text-xs h-8"
+                >
+                  {showChart ? "Hide Chart" : "Show Chart"}
+                </Button>
                 
+                <div className="flex bg-muted rounded-lg p-1 h-8">
+                  {(['This Year', 'Last Year', 'All Time'] as DurationFilter[]).map((filter) => (
+                    <Button
+                      key={filter}
+                      variant={durationFilter === filter ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => handleDurationChange(filter)}
+                      className="text-xs h-6"
+                    >
+                      {filter}
+                    </Button>
+                  ))}
+                </div>
                 
-                {Object.keys(chartData.colors).map((issuer) => (
-                  <Bar
-                    key={issuer}
-                    dataKey={issuer}
-                    stackId="investment"
-                    fill={chartData.colors[issuer]}
-                    radius={[2, 2, 0, 0]}
-                  />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
+                <div className="flex bg-muted rounded-lg p-1 h-8">
+                  {(['Years', 'Quarters', 'Months'] as DurationView[]).map((view) => (
+                    <Button
+                      key={view}
+                      variant={durationView === view ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => handleViewChange(view)}
+                      className="text-xs h-6"
+                    >
+                      {view}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="bg-primary-glow/20 px-3 py-1 rounded-lg">
+                <span className="text-sm text-muted-foreground mr-2">Active Avg XIRR:</span>
+                <span className="font-semibold text-primary">{avgXirr.toFixed(2)}%</span>
+              </div>
+            </div>
           </div>
-        )}
+        
+          {/* Chart */}
+          {showChart && (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={chartData.data}
+                  margin={{
+                    top: 20,
+                    right: 30,
+                    left: 20,
+                    bottom: 60,
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis 
+                    dataKey="period" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    fontSize={12}
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+                  <YAxis 
+                    tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
+                    fontSize={12}
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: '20px' }}
+                    iconType="rect"
+                  />
+                  
+                  {Object.keys(chartData.colors).map((issuer) => (
+                    <Bar
+                      key={issuer}
+                      dataKey={issuer}
+                      stackId="investment"
+                      fill={chartData.colors[issuer]}
+                      radius={[2, 2, 0, 0]}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
         
         {/* Table */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">WintWealth Bond Analysis</h3>
           <div className="relative">
-          
-          <div className="border rounded-lg overflow-hidden">
-            <div className="overflow-auto max-h-72 relative">
-              <Table>
-                <TableHeader className="sticky top-0 z-30 bg-muted">
-                  <TableRow className="border-border bg-muted">
-                    <TableHead 
-                      className="font-semibold sticky left-0 top-0 bg-muted z-40 min-w-48 border-r border-border cursor-pointer hover:bg-muted/80"
-                      onClick={() => handleSort('issuer')}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <span>Bond Issuer</span>
-                        {sortField === 'issuer' && (
-                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="font-semibold text-right bg-muted border-r border-border cursor-pointer hover:bg-muted/80"
-                      onClick={() => handleSort('investment')}
-                    >
-                      <div className="flex items-center justify-end space-x-2">
-                        <span>Investment</span>
-                        {sortField === 'investment' && (
-                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead className="font-semibold text-center bg-muted border-r border-border min-w-20">Bonds</TableHead>
-                    {allTimePeriods.map(period => (
-                      <TableHead key={period} className="font-semibold text-right min-w-24 bg-muted">
-                        {period}
+            <div className="border rounded-lg overflow-hidden">
+              <div 
+                className="overflow-auto max-h-72 relative"
+                ref={setTableScrollRef}
+              >
+                <Table>
+                  <TableHeader className="sticky top-0 z-30 bg-muted">
+                    <TableRow className="border-border bg-muted">
+                      <TableHead 
+                        className="font-semibold sticky left-0 top-0 bg-muted z-40 min-w-48 border-r border-border cursor-pointer hover:bg-muted/80"
+                        onClick={() => handleSort('issuer')}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span>Bond Issuer</span>
+                          {sortField === 'issuer' && (
+                            sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                          )}
+                        </div>
                       </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(filteredPivotData).sort((a, b) => {
-                    if (sortField === 'issuer') {
-                      return sortDirection === 'asc' 
-                        ? a[0].localeCompare(b[0]) 
-                        : b[0].localeCompare(a[0]);
-                    } else {
-                      return sortDirection === 'asc' 
-                        ? issuerTotals[a[0]] - issuerTotals[b[0]] 
-                        : issuerTotals[b[0]] - issuerTotals[a[0]];
-                    }
-                  }).map(([issuer, bonds]) => {
-                    const activeBondsCount = filteredData.filter(bond => bond.bondIssuer === issuer).length;
-                    const isExpanded = expandedIssuers.has(issuer);
-                    
-                    return (
-                      <React.Fragment key={issuer}>
-                        {/* Issuer Row */}
-                        <TableRow className="border-border bg-muted/30 hover:bg-muted/50 cursor-pointer" onClick={() => toggleIssuer(issuer)}>
-                          <TableCell className="sticky left-0 bg-muted z-20 border-r border-border">
-                           <div className="flex items-center space-x-2">
-                               {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                               <span className="font-semibold text-primary">{issuer}</span>
-                             </div>
-                          </TableCell>
-                           <TableCell className="text-right font-semibold text-primary">
-                             {formatCurrency(issuerTotals[issuer])}
-                           </TableCell>
-                           <TableCell className="text-center">
-                             <Badge variant="secondary" className="bg-success-glow text-success text-xs">
-                               {activeBondsCount}
-                             </Badge>
-                           </TableCell>
-                           {allTimePeriods.map(period => {
-                            const total = Object.values(bonds).reduce((sum, timeData) => {
-                              return sum + (timeData[period] || 0);
-                            }, 0);
-                             return (
-                               <TableCell key={period} className="text-right font-medium">
-                                 {total > 0 ? formatCurrency(total) : '-'}
-                               </TableCell>
-                             );
-                          })}
-                        </TableRow>
-                        
-                        {/* Bond Series Rows */}
-                        {isExpanded && Object.entries(bonds).map(([bondName, timeData]) => (
-                          <TableRow key={bondName} className="border-border bg-background/50">
-                            <TableCell className="sticky left-0 bg-background z-20 pl-8 border-r border-border">
-                              <div className="flex items-center space-x-2">
-                                <Calendar className="w-3 h-3 text-muted-foreground" />
-                                <span className="text-sm">{bondName}</span>
-                              </div>
+                      <TableHead 
+                        className="font-semibold text-right bg-muted border-r border-border cursor-pointer hover:bg-muted/80"
+                        onClick={() => handleSort('investment')}
+                      >
+                        <div className="flex items-center justify-end space-x-2">
+                          <span>Investment</span>
+                          {sortField === 'investment' && (
+                            sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead className="font-semibold text-center bg-muted border-r border-border min-w-20">Bonds</TableHead>
+                      {allTimePeriods.map(period => (
+                        <TableHead key={period} className="font-semibold text-right min-w-24 bg-muted">
+                          {period}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(filteredPivotData).sort((a, b) => {
+                      if (sortField === 'issuer') {
+                        return sortDirection === 'asc' 
+                          ? a[0].localeCompare(b[0]) 
+                          : b[0].localeCompare(a[0]);
+                      } else {
+                        return sortDirection === 'asc' 
+                          ? issuerTotals[a[0]] - issuerTotals[b[0]] 
+                          : issuerTotals[b[0]] - issuerTotals[a[0]];
+                      }
+                    }).map(([issuer, bonds]) => {
+                      const activeBondsCount = filteredData.filter(bond => bond.bondIssuer === issuer).length;
+                      const isExpanded = expandedIssuers.has(issuer);
+                      
+                      return (
+                        <React.Fragment key={issuer}>
+                          {/* Issuer Row */}
+                          <TableRow className="border-border bg-muted/30 hover:bg-muted/50 cursor-pointer" onClick={() => toggleIssuer(issuer)}>
+                            <TableCell className="sticky left-0 bg-muted/30 z-20 border-r border-border">
+                             <div className="flex items-center space-x-2">
+                                 {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                 <span className="font-semibold text-primary">{issuer}</span>
+                               </div>
                             </TableCell>
-                             <TableCell className="text-right text-sm">
-                               {formatCurrency(Object.values(timeData).reduce((sum, amount) => sum + amount, 0))}
+                             <TableCell className="text-right font-semibold text-primary">
+                               {formatCurrency(issuerTotals[issuer])}
                              </TableCell>
-                             <TableCell className="text-center text-sm">-</TableCell>
-                             {allTimePeriods.map(period => (
-                               <TableCell key={period} className="text-right text-sm">
-                                 {timeData[period] ? formatCurrency(timeData[period]) : '-'}
-                               </TableCell>
-                             ))}
+                             <TableCell className="text-center">
+                               <Badge variant="secondary" className="bg-success-glow text-success text-xs">
+                                 {activeBondsCount}
+                               </Badge>
+                             </TableCell>
+                             {allTimePeriods.map(period => {
+                              const total = Object.values(bonds).reduce((sum, timeData) => {
+                                return sum + (timeData[period] || 0);
+                              }, 0);
+                               return (
+                                 <TableCell key={period} className="text-right font-medium">
+                                   {total > 0 ? formatCurrency(total) : '-'}
+                                 </TableCell>
+                               );
+                            })}
                           </TableRow>
-                        ))}
-                      </React.Fragment>
-                     );
-                   })}
-                   
-                   {/* Total Row */}
-                   <TableRow className="border-border bg-primary/10 font-bold">
-                      <TableCell className="sticky left-0 bg-primary z-20 border-r border-border font-bold">
-                        Total
-                      </TableCell>
-                     <TableCell className="text-right font-bold text-primary">
-                       {formatCurrency(Object.values(issuerTotals).reduce((sum, amount) => sum + amount, 0))}
-                     </TableCell>
-                     <TableCell className="text-center font-bold">
-                       {filteredData.length}
-                     </TableCell>
-                     {allTimePeriods.map(period => {
-                       const periodTotal = Object.values(filteredPivotData).reduce((sum, bonds) => {
-                         return sum + Object.values(bonds).reduce((bondSum, timeData) => {
-                           return bondSum + (timeData[period] || 0);
-                         }, 0);
-                       }, 0);
-                       return (
-                         <TableCell key={period} className="text-right font-bold">
-                           {periodTotal > 0 ? formatCurrency(periodTotal) : '-'}
-                         </TableCell>
+                          
+                          {/* Bond Series Rows */}
+                          {isExpanded && Object.entries(bonds).map(([bondName, timeData]) => (
+                            <TableRow key={bondName} className="border-border bg-background/50">
+                              <TableCell className="sticky left-0 bg-background z-20 pl-8 border-r border-border">
+                                <div className="flex items-center space-x-2">
+                                  <Calendar className="w-3 h-3 text-muted-foreground" />
+                                  <span className="text-sm">{bondName}</span>
+                                </div>
+                              </TableCell>
+                               <TableCell className="text-right text-sm">
+                                 {formatCurrency(Object.values(timeData).reduce((sum, amount) => sum + amount, 0))}
+                               </TableCell>
+                               <TableCell className="text-center text-sm">-</TableCell>
+                               {allTimePeriods.map(period => (
+                                 <TableCell key={period} className="text-right text-sm">
+                                   {timeData[period] ? formatCurrency(timeData[period]) : '-'}
+                                 </TableCell>
+                               ))}
+                            </TableRow>
+                          ))}
+                        </React.Fragment>
                        );
                      })}
-                   </TableRow>
-                 </TableBody>
-              </Table>
+                     
+                     {/* Total Row */}
+                     <TableRow className="border-border bg-muted font-bold">
+                        <TableCell className="sticky left-0 bg-muted z-20 border-r border-border font-bold">
+                          Total
+                        </TableCell>
+                       <TableCell className="text-right font-bold text-primary">
+                         {formatCurrency(Object.values(issuerTotals).reduce((sum, amount) => sum + amount, 0))}
+                       </TableCell>
+                       <TableCell className="text-center font-bold">
+                         {filteredData.length}
+                       </TableCell>
+                       {allTimePeriods.map(period => {
+                         const periodTotal = Object.values(filteredPivotData).reduce((sum, bonds) => {
+                           return sum + Object.values(bonds).reduce((bondSum, timeData) => {
+                             return bondSum + (timeData[period] || 0);
+                           }, 0);
+                         }, 0);
+                         return (
+                           <TableCell key={period} className="text-right font-bold">
+                             {periodTotal > 0 ? formatCurrency(periodTotal) : '-'}
+                           </TableCell>
+                         );
+                       })}
+                     </TableRow>
+                   </TableBody>
+                </Table>
+              </div>
             </div>
           </div>
         </div>
