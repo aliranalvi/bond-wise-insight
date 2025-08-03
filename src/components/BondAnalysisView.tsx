@@ -353,13 +353,6 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                   iconType="rect"
                 />
                 
-                <ReferenceLine 
-                  y={avgInvestment} 
-                  stroke="hsl(var(--destructive))" 
-                  strokeDasharray="5 5" 
-                  strokeWidth={2}
-                  label={{ value: "Avg Investment", position: "insideTopRight" }}
-                />
                 
                 {Object.keys(chartData.colors).map((issuer) => (
                   <Bar
@@ -377,9 +370,6 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
         
         {/* Table */}
           <div className="relative">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-lg font-semibold">Investment Details</h3>
-            </div>
           
           <div className="border rounded-lg overflow-hidden">
             <div className="overflow-auto max-h-96 relative">
@@ -486,8 +476,8 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                    })}
                    
                    {/* Total Row */}
-                   <TableRow className="border-border bg-primary/10 font-bold">
-                     <TableCell className="sticky left-0 bg-primary/10 z-20 border-r border-border font-bold">
+                   <TableRow className="border-border bg-muted font-bold">
+                     <TableCell className="sticky left-0 bg-muted z-20 border-r border-border font-bold">
                        Total
                      </TableCell>
                      <TableCell className="text-right font-bold text-primary">

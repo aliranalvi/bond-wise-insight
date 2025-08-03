@@ -334,7 +334,7 @@ export const BondAnalyzer = () => {
         <div className="flex justify-between items-start mb-6">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
-              Bond Portfolio Analysis
+              WintWealth: Bonds Portfolio Investment Analysis
             </h1>
             <p className="text-muted-foreground">
               Analysis of {bondData.length} bond investments
@@ -364,7 +364,7 @@ export const BondAnalyzer = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
           <Card className="shadow-soft bg-gradient-card border-0">
             <CardContent className="p-4">
               <div className="flex items-center space-x-3">
@@ -444,6 +444,25 @@ export const BondAnalyzer = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Unique Issuers</p>
                   <p className="text-lg font-bold text-accent">{Object.keys(pivotData).length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-soft bg-gradient-card border-0">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Overall XIRR</p>
+                  <p className="text-lg font-bold text-primary">
+                    {bondData.length > 0 ? 
+                      (bondData.reduce((sum, bond) => sum + bond.xirr, 0) / bondData.length).toFixed(2) + '%' : 
+                      '0.00%'
+                    }
+                  </p>
                 </div>
               </div>
             </CardContent>
