@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Calendar, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronDown, ChevronRight, Calendar, ArrowUpDown, ArrowUp, ArrowDown, TrendingUp, DollarSign } from 'lucide-react';
 
 interface BondData {
   bondName: string;
@@ -49,6 +50,14 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
   const [showChart, setShowChart] = useState<boolean>(false);
   const [sortField, setSortField] = useState<SortField>('issuer');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  // Reset scroll when duration or granularity changes
+  useEffect(() => {
+    if (tableRef.current) {
+      tableRef.current.scrollTop = 0;
+    }
+  }, [durationFilter, durationView]);
 
   const toggleIssuer = (issuer: string) => {
     const newExpanded = new Set(expandedIssuers);
@@ -180,8 +189,17 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
     return bondData.reduce((sum, bond) => sum + bond.xirr, 0) / bondData.length;
   }, [bondData]);
 
-  // Calculate average investment per period for chart line
-  const avgInvestment = useMemo(() => {
+  // Calculate Avg XIRR for active bonds shown in table
+  const avgActiveXIRR = useMemo(() => {
+    if (filteredData.length === 0) return 0;
+    return filteredData.reduce((sum, bond) => sum + bond.xirr, 0) / filteredData.length;
+  }, [filteredData]);
+  
+  // Calculate Avg Investment per selected granularity
+  const granularityMap = { Years: 'Year', Quarters: 'Quarter', Months: 'Month' };
+  const granularityLabel = granularityMap[durationView] || 'Period';
+  const avgInvestmentPerPeriod = useMemo(() => {
+    if (allTimePeriods.length === 0) return 0;
     const totalInvestment = Object.values(issuerTotals).reduce((sum, amount) => sum + amount, 0);
     return totalInvestment / allTimePeriods.length;
   }, [issuerTotals, allTimePeriods]);
@@ -261,16 +279,115 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
 
   return (
     <Card className="shadow-medium bg-gradient-card border-0">
-      <CardHeader>
+      <CardHeader className="pb-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <CardTitle className="text-xl font-bold">Active Investment Analysis</CardTitle>
             <CardDescription>
-              Interactive chart and breakdown by issuer (excludes matured bonds)
+              (excludes matured bonds)
             </CardDescription>
           </div>
           
-          {/* Duration Filters and KPIs */}
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <TooltipProvider>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <Card className="shadow-soft bg-gradient-card border-0 w-full">
+                    <CardContent className="p-3">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <TrendingUp className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Avg XIRR</p>
+                          <p className="text-sm font-bold text-primary">
+                            {avgActiveXIRR.toFixed(2)}%
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Average XIRR across all active bonds shown in the current table view</p>
+                </TooltipContent>
+              </UITooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <Card className="shadow-soft bg-gradient-card border-0 w-full">
+                    <CardContent className="p-3">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <DollarSign className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Avg Investment/{granularityLabel}</p>
+                          <p className="text-sm font-bold text-accent">₹{avgInvestmentPerPeriod.toLocaleString('en-IN')}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Average investment amount per {granularityLabel.toLowerCase()} across all periods shown in the table</p>
+                </TooltipContent>
+              </UITooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <Card className="shadow-soft bg-gradient-card border-0 w-full">
+                    <CardContent className="p-3">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <Calendar className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Active Investments</p>
+                          <p className="text-sm font-bold text-accent">{filteredData.length}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Total number of active bond investments (excludes matured bonds)</p>
+                </TooltipContent>
+              </UITooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <Card className="shadow-soft bg-gradient-card border-0 w-full">
+                    <CardContent className="p-3">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <DollarSign className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Total Investment</p>
+                          <p className="text-sm font-bold text-destructive">
+                            ₹{filteredData.reduce((sum, bond) => sum + bond.investedAmount, 0).toLocaleString('en-IN')}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Total investment amount across all active bonds</p>
+                </TooltipContent>
+              </UITooltip>
+            </TooltipProvider>
+          </div>
+          
+          {/* Duration Filters */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
@@ -310,19 +427,14 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                 ))}
               </div>
             </div>
-            
-            <div className="bg-primary-glow/20 px-3 py-1 rounded-lg">
-              <span className="text-sm text-muted-foreground mr-2">Avg XIRR:</span>
-              <span className="font-semibold text-primary">{avgXirr.toFixed(2)}%</span>
-            </div>
           </div>
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4">
         {/* Chart */}
         {showChart && (
-          <div className="h-80">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={chartData.data}
@@ -353,7 +465,6 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                   iconType="rect"
                 />
                 
-                
                 {Object.keys(chartData.colors).map((issuer) => (
                   <Bar
                     key={issuer}
@@ -372,7 +483,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           <div className="relative">
           
           <div className="border rounded-lg overflow-hidden">
-            <div className="overflow-auto max-h-96 relative">
+            <div ref={tableRef} className="overflow-auto max-h-72 relative">
               <Table>
                 <TableHeader className="sticky top-0 z-30 bg-muted">
                   <TableRow className="border-border bg-muted">
