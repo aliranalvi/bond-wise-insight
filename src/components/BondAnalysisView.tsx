@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronDown, ChevronRight, Calendar, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { BondDetailsModal } from './BondDetailsModal';
 
 interface BondData {
   bondName: string;
@@ -50,6 +51,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
   const [showChart, setShowChart] = useState<boolean>(false);
   const [sortField, setSortField] = useState<SortField>('issuer');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [selectedBond, setSelectedBond] = useState<{ bondData: BondData | null; bondName: string; issuer: string } | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
 
   // Reset scroll to top when duration filter or view changes
@@ -76,6 +78,19 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
       setSortField(field);
       setSortDirection('asc');
     }
+  };
+
+  const handleBondClick = (bondName: string, issuer: string) => {
+    // Find the specific bond data
+    const bondDataMatch = filteredData.find(bond => 
+      bond.bondName === bondName && bond.bondIssuer === issuer
+    );
+    
+    setSelectedBond({
+      bondData: bondDataMatch || null,
+      bondName,
+      issuer
+    });
   };
 
   const formatCurrency = (amount: number): string => {
@@ -471,11 +486,15 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                         
                         {/* Bond Series Rows */}
                         {isExpanded && Object.entries(bonds).map(([bondName, timeData]) => (
-                          <TableRow key={bondName} className="border-border bg-background/50">
+                          <TableRow 
+                            key={bondName} 
+                            className="border-border bg-background/50 hover:bg-muted/50 cursor-pointer transition-colors"
+                            onClick={() => handleBondClick(bondName, issuer)}
+                          >
                             <TableCell className="sticky left-0 bg-background z-20 pl-8 border-r border-border">
                               <div className="flex items-center space-x-2">
                                 <Calendar className="w-3 h-3 text-muted-foreground" />
-                                <span className="text-sm">{bondName}</span>
+                                <span className="text-sm hover:text-primary transition-colors">{bondName}</span>
                               </div>
                             </TableCell>
                              <TableCell className="text-right text-sm">
@@ -522,6 +541,15 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
             </div>
           </div>
         </div>
+
+        {/* Bond Details Modal */}
+        <BondDetailsModal
+          isOpen={selectedBond !== null}
+          onClose={() => setSelectedBond(null)}
+          bondData={selectedBond?.bondData || null}
+          bondName={selectedBond?.bondName || ''}
+          issuer={selectedBond?.issuer || ''}
+        />
       </CardContent>
     </Card>
   );
