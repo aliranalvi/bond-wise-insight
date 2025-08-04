@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Upload, FileSpreadsheet, TrendingUp, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import { BondAnalysisView } from './BondAnalysisView';
@@ -364,110 +365,161 @@ export const BondAnalyzer = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
-          <Card className="shadow-soft bg-gradient-card border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Investment</p>
-                  <p className="text-lg font-bold">₹{totalInvestment.toLocaleString('en-IN')}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="shadow-soft bg-gradient-card border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-success" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Active Bonds</p>
-                  <p className="text-lg font-bold text-success">{totalActive}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="shadow-soft bg-gradient-card border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-success" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Active Investment</p>
-                  <p className="text-lg font-bold text-success">₹{activeInvestment.toLocaleString('en-IN')}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="shadow-soft bg-gradient-card border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-warning" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Matured Bonds</p>
-                  <p className="text-lg font-bold text-warning">{totalMatured}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="shadow-soft bg-gradient-card border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-warning" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Matured Investment</p>
-                  <p className="text-lg font-bold text-warning">₹{maturedInvestment.toLocaleString('en-IN')}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="shadow-soft bg-gradient-card border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
-                  <FileSpreadsheet className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Unique Issuers</p>
-                  <p className="text-lg font-bold text-accent">{Object.keys(pivotData).length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="shadow-soft bg-gradient-card border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Overall XIRR</p>
-                  <p className="text-lg font-bold text-primary">
-                    {bondData.length > 0 ? 
-                      (bondData.reduce((sum, bond) => sum + bond.xirr, 0) / bondData.length).toFixed(2) + '%' : 
-                      '0.00%'
-                    }
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <TooltipProvider>
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card className="shadow-soft bg-gradient-card border-0 flex-1">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <TrendingUp className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Investment</p>
+                        <p className="text-lg font-bold">₹{totalInvestment.toLocaleString('en-IN')}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Sum of all investments across active and matured bonds</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card className="shadow-soft bg-gradient-card border-0 flex-1">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-success" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Active Bonds</p>
+                        <p className="text-lg font-bold text-success">{totalActive}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Number of bonds that have not yet matured</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card className="shadow-soft bg-gradient-card border-0 flex-1">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
+                        <TrendingUp className="w-5 h-5 text-success" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Active Investment</p>
+                        <p className="text-lg font-bold text-success">₹{activeInvestment.toLocaleString('en-IN')}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Total invested amount in bonds that have not yet matured</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card className="shadow-soft bg-gradient-card border-0 flex-1">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-warning" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Matured Bonds</p>
+                        <p className="text-lg font-bold text-warning">{totalMatured}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Number of bonds that have already matured</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card className="shadow-soft bg-gradient-card border-0 flex-1">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
+                        <TrendingUp className="w-5 h-5 text-warning" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Matured Investment</p>
+                        <p className="text-lg font-bold text-warning">₹{maturedInvestment.toLocaleString('en-IN')}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Total invested amount in bonds that have already matured</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card className="shadow-soft bg-gradient-card border-0 flex-1">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
+                        <FileSpreadsheet className="w-5 h-5 text-accent" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Unique Issuers</p>
+                        <p className="text-lg font-bold text-accent">{Object.keys(pivotData).length}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Number of unique bond issuers in your portfolio</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card className="shadow-soft bg-gradient-card border-0 flex-1">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <TrendingUp className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Overall XIRR</p>
+                        <p className="text-lg font-bold text-primary">
+                          {bondData.length > 0 ? 
+                            (bondData.reduce((sum, bond) => sum + bond.xirr, 0) / bondData.length).toFixed(2) + '%' : 
+                            '0.00%'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Average XIRR across all bonds (active and matured)</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
         
         {/* Combined Chart and Table */}
         <BondAnalysisView pivotData={pivotData} bondData={bondData} />

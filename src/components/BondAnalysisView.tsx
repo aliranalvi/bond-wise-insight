@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronDown, ChevronRight, Calendar, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface BondData {
@@ -49,6 +50,14 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
   const [showChart, setShowChart] = useState<boolean>(false);
   const [sortField, setSortField] = useState<SortField>('issuer');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  // Reset scroll to top when duration filter or view changes
+  useEffect(() => {
+    if (tableRef.current) {
+      tableRef.current.scrollTop = 0;
+    }
+  }, [durationFilter, durationView]);
 
   const toggleIssuer = (issuer: string) => {
     const newExpanded = new Set(expandedIssuers);
@@ -174,11 +183,11 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
     return totals;
   }, [filteredPivotData]);
 
-  // Calculate average XIRR for all bonds (active and matured)
+  // Calculate average XIRR for filtered active bonds only
   const avgXirr = useMemo(() => {
-    if (bondData.length === 0) return 0;
-    return bondData.reduce((sum, bond) => sum + bond.xirr, 0) / bondData.length;
-  }, [bondData]);
+    if (filteredData.length === 0) return 0;
+    return filteredData.reduce((sum, bond) => sum + bond.xirr, 0) / filteredData.length;
+  }, [filteredData]);
 
   // Calculate average investment per period for chart line
   const avgInvestment = useMemo(() => {
@@ -266,7 +275,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           <div>
             <CardTitle className="text-xl font-bold">Active Investment Analysis</CardTitle>
             <CardDescription>
-              Interactive chart and breakdown by issuer (excludes matured bonds)
+              (excludes matured bonds)
             </CardDescription>
           </div>
           
@@ -311,10 +320,19 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
               </div>
             </div>
             
-            <div className="bg-primary-glow/20 px-3 py-1 rounded-lg">
-              <span className="text-sm text-muted-foreground mr-2">Avg XIRR:</span>
-              <span className="font-semibold text-primary">{avgXirr.toFixed(2)}%</span>
-            </div>
+            <TooltipProvider>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <div className="bg-primary-glow/20 px-3 py-1 rounded-lg cursor-help">
+                    <span className="text-sm text-muted-foreground mr-2">Avg XIRR:</span>
+                    <span className="font-semibold text-primary">{avgXirr.toFixed(2)}%</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Average XIRR of bonds shown in the current table view</p>
+                </TooltipContent>
+              </UITooltip>
+            </TooltipProvider>
           </div>
         </div>
       </CardHeader>
@@ -372,7 +390,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           <div className="relative">
           
           <div className="border rounded-lg overflow-hidden">
-            <div className="overflow-auto max-h-96 relative">
+            <div ref={tableRef} className="overflow-auto max-h-96 relative">
               <Table>
                 <TableHeader className="sticky top-0 z-30 bg-muted">
                   <TableRow className="border-border bg-muted">
