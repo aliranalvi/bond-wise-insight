@@ -108,8 +108,10 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
       // Check if this payment has been made based on repayment data
       const paymentDateStr = paymentDate.toLocaleDateString('en-IN');
       const isPaid = bondRepaymentData.some(entry => {
-        const entryDate = new Date(entry.date.split('/').reverse().join('-'));
-        return Math.abs(entryDate.getTime() - paymentDate.getTime()) < 30 * 24 * 60 * 60 * 1000; // Within 30 days
+        // Parse DD/MM/YYYY format from repayment data
+        const [day, month, year] = entry.date.split('/');
+        const entryDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        return Math.abs(entryDate.getTime() - paymentDate.getTime()) < 45 * 24 * 60 * 60 * 1000; // Within 45 days
       });
       
       schedule.push({

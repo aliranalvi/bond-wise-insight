@@ -201,7 +201,7 @@ export const BondAnalyzer = () => {
       const row = rawData[i] as any[];
       if (row && row.some(cell => 
         cell && typeof cell === 'string' && 
-        (cell.toLowerCase().includes('date') || cell.toLowerCase().includes('name of bond'))
+        (cell.toLowerCase().includes('date') && cell.toLowerCase().includes('name of bond'))
       )) {
         headerRowIndex = i;
         break;
@@ -219,7 +219,7 @@ export const BondAnalyzer = () => {
     headers.forEach((header, index) => {
       if (header && typeof header === 'string') {
         const cleanHeader = header.toLowerCase().trim();
-        if (cleanHeader.includes('date')) columnMap.date = index;
+        if (cleanHeader.includes('date') && !cleanHeader.includes('maturity')) columnMap.date = index;
         else if (cleanHeader.includes('name of bond')) columnMap.bondName = index;
         else if (cleanHeader.includes('isin')) columnMap.isin = index;
         else if (cleanHeader.includes('no. of units')) columnMap.units = index;
@@ -237,12 +237,35 @@ export const BondAnalyzer = () => {
       
       if (!row || row.length === 0) continue;
       
-      const bondName = row[columnMap.bondName]?.toString() || '';
+      // Skip empty rows or rows that look like headers/totals
+      const firstCell = row[0];
+      const bondNameCell = row[columnMap.bondName];
+      
+      if (!firstCell || !bondNameCell || 
+          (typeof firstCell === 'string' && 
+           (firstCell.toLowerCase().includes('total') || 
+            firstCell.toLowerCase().includes('date') ||
+            firstCell.toLowerCase().includes('grand') ||
+            firstCell.trim() === '')) ||
+          (typeof bondNameCell === 'string' && 
+           (bondNameCell.toLowerCase().includes('total') || 
+            bondNameCell.toLowerCase().includes('name of bond') ||
+            bondNameCell.trim() === ''))) {
+        continue;
+      }
+      
+      // Validate date format (DD/MM/YYYY)
+      const dateStr = row[columnMap.date]?.toString() || '';
+      if (!dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+        continue;
+      }
+      
+      const bondName = bondNameCell?.toString() || '';
       if (!bondName) continue;
       
       try {
         const repaymentEntry: RepaymentData = {
-          date: row[columnMap.date]?.toString() || '',
+          date: dateStr,
           bondName,
           isin: row[columnMap.isin]?.toString() || '',
           units: parseFloat(row[columnMap.units]?.toString() || '0'),
