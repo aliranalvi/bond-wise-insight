@@ -33,9 +33,22 @@ interface PivotData {
   };
 }
 
+interface RepaymentData {
+  date: string;
+  bondName: string;
+  isin: string;
+  units: number;
+  amountInBank: number;
+  principalRepaid: number;
+  interestPaidBeforeTDS: number;
+  interestPaidAfterTDS: number;
+  tdsDeducted: number;
+}
+
 interface BondAnalysisViewProps {
   pivotData: PivotData;
   bondData: BondData[];
+  repaymentData: RepaymentData[];
 }
 
 type DurationFilter = 'This Year' | 'Last Year' | 'All Time';
@@ -44,7 +57,7 @@ type DurationView = 'Years' | 'Quarters' | 'Months';
 type SortField = 'issuer' | 'investment';
 type SortDirection = 'asc' | 'desc';
 
-export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, bondData }) => {
+export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, bondData, repaymentData }) => {
   const [durationFilter, setDurationFilter] = useState<DurationFilter>('All Time');
   const [durationView, setDurationView] = useState<DurationView>('Months');
   const [expandedIssuers, setExpandedIssuers] = useState<Set<string>>(new Set());
@@ -549,6 +562,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           bondData={selectedBond?.bondData || null}
           bondName={selectedBond?.bondName || ''}
           issuer={selectedBond?.issuer || ''}
+          repaymentData={repaymentData}
         />
       </CardContent>
     </Card>

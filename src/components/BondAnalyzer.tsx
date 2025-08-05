@@ -24,6 +24,18 @@ interface BondData {
   monthYear: string;
 }
 
+interface RepaymentData {
+  date: string;
+  bondName: string;
+  isin: string;
+  units: number;
+  amountInBank: number;
+  principalRepaid: number;
+  interestPaidBeforeTDS: number;
+  interestPaidAfterTDS: number;
+  tdsDeducted: number;
+}
+
 interface PivotData {
   [issuer: string]: {
     [bondName: string]: {
@@ -34,6 +46,7 @@ interface PivotData {
 
 export const BondAnalyzer = () => {
   const [bondData, setBondData] = useState<BondData[]>([]);
+  const [repaymentData, setRepaymentData] = useState<RepaymentData[]>([]);
   const [pivotData, setPivotData] = useState<PivotData>({});
   const [isUploading, setIsUploading] = useState(false);
   const [hasData, setHasData] = useState(false);
@@ -177,6 +190,79 @@ export const BondAnalyzer = () => {
     return cleanedData;
   };
 
+  const cleanAndParseRepaymentData = (worksheet: XLSX.WorkSheet): RepaymentData[] => {
+    const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    const cleanedData: RepaymentData[] = [];
+    
+    let headerRowIndex = -1;
+    
+    // Find the header row
+    for (let i = 0; i < rawData.length; i++) {
+      const row = rawData[i] as any[];
+      if (row && row.some(cell => 
+        cell && typeof cell === 'string' && 
+        (cell.toLowerCase().includes('date') || cell.toLowerCase().includes('name of bond'))
+      )) {
+        headerRowIndex = i;
+        break;
+      }
+    }
+    
+    if (headerRowIndex === -1) {
+      return []; // No repayment data found
+    }
+    
+    const headers = rawData[headerRowIndex] as string[];
+    
+    // Map column indices
+    const columnMap: { [key: string]: number } = {};
+    headers.forEach((header, index) => {
+      if (header && typeof header === 'string') {
+        const cleanHeader = header.toLowerCase().trim();
+        if (cleanHeader.includes('date')) columnMap.date = index;
+        else if (cleanHeader.includes('name of bond')) columnMap.bondName = index;
+        else if (cleanHeader.includes('isin')) columnMap.isin = index;
+        else if (cleanHeader.includes('no. of units')) columnMap.units = index;
+        else if (cleanHeader.includes('amount in bank')) columnMap.amountInBank = index;
+        else if (cleanHeader.includes('principal repaid')) columnMap.principalRepaid = index;
+        else if (cleanHeader.includes('interest paid (before tds deduction)')) columnMap.interestPaidBeforeTDS = index;
+        else if (cleanHeader.includes('interest paid (after tds deduction)')) columnMap.interestPaidAfterTDS = index;
+        else if (cleanHeader.includes('tds deducted')) columnMap.tdsDeducted = index;
+      }
+    });
+    
+    // Process data rows
+    for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+      const row = rawData[i] as any[];
+      
+      if (!row || row.length === 0) continue;
+      
+      const bondName = row[columnMap.bondName]?.toString() || '';
+      if (!bondName) continue;
+      
+      try {
+        const repaymentEntry: RepaymentData = {
+          date: row[columnMap.date]?.toString() || '',
+          bondName,
+          isin: row[columnMap.isin]?.toString() || '',
+          units: parseFloat(row[columnMap.units]?.toString() || '0'),
+          amountInBank: parseFloat(row[columnMap.amountInBank]?.toString().replace(/[^\d.-]/g, '') || '0'),
+          principalRepaid: parseFloat(row[columnMap.principalRepaid]?.toString().replace(/[^\d.-]/g, '') || '0'),
+          interestPaidBeforeTDS: parseFloat(row[columnMap.interestPaidBeforeTDS]?.toString().replace(/[^\d.-]/g, '') || '0'),
+          interestPaidAfterTDS: parseFloat(row[columnMap.interestPaidAfterTDS]?.toString().replace(/[^\d.-]/g, '') || '0'),
+          tdsDeducted: parseFloat(row[columnMap.tdsDeducted]?.toString().replace(/[^\d.-]/g, '') || '0'),
+        };
+        
+        cleanedData.push(repaymentEntry);
+      } catch (error) {
+        console.warn('Error processing repayment row:', i, error);
+        continue;
+      }
+    }
+    
+    return cleanedData;
+  };
+
   const generatePivotData = (data: BondData[]): PivotData => {
     const pivot: PivotData = {};
     
@@ -230,6 +316,20 @@ export const BondAnalyzer = () => {
       const worksheet = workbook.Sheets[worksheetName];
       const parsedData = cleanAndParseData(worksheet);
       
+      // Look for 'Repayment Summary Report' sheet
+      let repaymentWorksheetName = workbook.SheetNames.find(name => 
+        name.toLowerCase().includes('repayment summary') || 
+        name.toLowerCase().includes('repayment')
+      );
+      
+      let repaymentParsedData: RepaymentData[] = [];
+      if (repaymentWorksheetName) {
+        console.log('Using repayment worksheet:', repaymentWorksheetName);
+        const repaymentWorksheet = workbook.Sheets[repaymentWorksheetName];
+        repaymentParsedData = cleanAndParseRepaymentData(repaymentWorksheet);
+        console.log('Parsed repayment data:', repaymentParsedData.length, 'records');
+      }
+      
       console.log('Parsed data:', parsedData.length, 'records');
       
       if (parsedData.length === 0) {
@@ -239,6 +339,7 @@ export const BondAnalyzer = () => {
       const pivot = generatePivotData(parsedData);
       
       setBondData(parsedData);
+      setRepaymentData(repaymentParsedData);
       setPivotData(pivot);
       setHasData(true);
       
@@ -522,7 +623,7 @@ export const BondAnalyzer = () => {
         </TooltipProvider>
         
         {/* Combined Chart and Table */}
-        <BondAnalysisView pivotData={pivotData} bondData={bondData} />
+        <BondAnalysisView pivotData={pivotData} bondData={bondData} repaymentData={repaymentData} />
       </div>
     </div>
   );

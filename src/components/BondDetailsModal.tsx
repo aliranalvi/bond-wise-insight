@@ -30,12 +30,25 @@ interface RepaymentScheduleEntry {
   totalPayment: number;
 }
 
+interface RepaymentData {
+  date: string;
+  bondName: string;
+  isin: string;
+  units: number;
+  amountInBank: number;
+  principalRepaid: number;
+  interestPaidBeforeTDS: number;
+  interestPaidAfterTDS: number;
+  tdsDeducted: number;
+}
+
 interface BondDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   bondData: BondData | null;
   bondName: string;
   issuer: string;
+  repaymentData: RepaymentData[];
 }
 
 export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
@@ -43,7 +56,8 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
   onClose,
   bondData,
   bondName,
-  issuer
+  issuer,
+  repaymentData
 }) => {
   const formatCurrency = (amount: number): string => {
     return `₹${amount.toLocaleString('en-IN', { 
@@ -60,11 +74,21 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
     });
   };
 
-  // Mock repayment schedule - in real implementation, this would come from the Excel data
-  const generateRepaymentSchedule = (): RepaymentScheduleEntry[] => {
+  // Filter repayment data for this specific bond
+  const bondRepaymentData = repaymentData.filter(entry => 
+    entry.bondName === bondName || entry.isin === bondData?.isin
+  );
+
+  // Calculate actual payments from repayment data
+  const actualPrincipalRepaid = bondRepaymentData.reduce((sum, entry) => sum + entry.principalRepaid, 0);
+  const actualInterestPaidBeforeTDS = bondRepaymentData.reduce((sum, entry) => sum + entry.interestPaidBeforeTDS, 0);
+  const actualInterestPaidAfterTDS = bondRepaymentData.reduce((sum, entry) => sum + entry.interestPaidAfterTDS, 0);
+
+  // Generate repayment schedule with status
+  const generateRepaymentSchedule = (): (RepaymentScheduleEntry & { status: 'Paid' | 'Yet To Be Paid' })[] => {
     if (!bondData) return [];
     
-    const schedule: RepaymentScheduleEntry[] = [];
+    const schedule: (RepaymentScheduleEntry & { status: 'Paid' | 'Yet To Be Paid' })[] = [];
     const startDate = new Date(bondData.dateOfInvestment.split('/').reverse().join('-'));
     const endDate = new Date(bondData.maturityDate.split('/').reverse().join('-'));
     const monthsDiff = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
@@ -81,12 +105,20 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
       const principalPayment = Math.min(principalPerMonth, remainingPrincipal);
       remainingPrincipal -= principalPayment;
       
+      // Check if this payment has been made based on repayment data
+      const paymentDateStr = paymentDate.toLocaleDateString('en-IN');
+      const isPaid = bondRepaymentData.some(entry => {
+        const entryDate = new Date(entry.date.split('/').reverse().join('-'));
+        return Math.abs(entryDate.getTime() - paymentDate.getTime()) < 30 * 24 * 60 * 60 * 1000; // Within 30 days
+      });
+      
       schedule.push({
-        date: paymentDate.toLocaleDateString('en-IN'),
+        date: paymentDateStr,
         principalPayment,
         interestPayment: monthlyInterest,
         principalBalance: remainingPrincipal,
-        totalPayment: principalPayment + monthlyInterest
+        totalPayment: principalPayment + monthlyInterest,
+        status: isPaid ? 'Paid' : 'Yet To Be Paid'
       });
       
       if (remainingPrincipal <= 0) break;
@@ -96,9 +128,12 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
   };
 
   const repaymentSchedule = generateRepaymentSchedule();
-  const totalInterestPaid = repaymentSchedule.reduce((sum, entry) => sum + entry.interestPayment, 0);
-  const principalRepaid = bondData ? bondData.investedAmount - (repaymentSchedule[repaymentSchedule.length - 1]?.principalBalance || 0) : 0;
-  const principalRemaining = bondData ? bondData.investedAmount - principalRepaid : 0;
+  const principalRemaining = bondData ? bondData.investedAmount - actualPrincipalRepaid : 0;
+  
+  // Calculate future interest projections
+  const futureInterestPayments = repaymentSchedule
+    .filter(entry => entry.status === 'Yet To Be Paid')
+    .reduce((sum, entry) => sum + entry.interestPayment, 0);
 
   if (!bondData) return null;
 
@@ -203,7 +238,7 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Principal Repaid:</span>
-                  <span className="font-semibold text-success">{formatCurrency(principalRepaid)}</span>
+                  <span className="font-semibold text-success">{formatCurrency(actualPrincipalRepaid)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Principal Remaining:</span>
@@ -213,28 +248,39 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
             </Card>
           </div>
 
-          {/* Interest Details */}
+          {/* Interest Status */}
           <Card className="bg-gradient-subtle border-primary/20">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Percent className="w-5 h-5 text-success" />
-                Interest Payments
+                Interest Status
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Interest Paid (Before TDS):</span>
-                  <span className="font-semibold text-success">{formatCurrency(totalInterestPaid)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Interest Paid (After TDS):</span>
-                  <span className="font-semibold text-success">{formatCurrency(totalInterestPaid * 0.9)}</span>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-semibold mb-3 text-primary">Paid So Far</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground text-sm">Before TDS:</span>
+                    <span className="font-semibold text-success">{formatCurrency(actualInterestPaidBeforeTDS)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground text-sm">After TDS:</span>
+                    <span className="font-semibold text-success">{formatCurrency(actualInterestPaidAfterTDS)}</span>
+                  </div>
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground">
-                <p>* TDS calculation assumes 10% deduction</p>
-                <p>* Based on projected repayment schedule</p>
+              <div>
+                <h4 className="font-semibold mb-3 text-warning">Future Payment</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground text-sm">Projected:</span>
+                    <span className="font-semibold text-warning">{formatCurrency(futureInterestPayments)}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    <p>* Based on projected schedule</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -243,7 +289,6 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
           <Card className="bg-gradient-subtle border-primary/20">
             <CardHeader>
               <CardTitle className="text-lg">Repayment Schedule</CardTitle>
-              <p className="text-sm text-muted-foreground">Projected payment schedule based on investment terms</p>
             </CardHeader>
             <CardContent>
               <div className="max-h-80 overflow-y-auto border rounded-lg">
@@ -255,6 +300,7 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
                       <TableHead className="font-semibold text-right">Interest Payment</TableHead>
                       <TableHead className="font-semibold text-right">Total Payment</TableHead>
                       <TableHead className="font-semibold text-right">Principal Balance</TableHead>
+                      <TableHead className="font-semibold text-center">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -265,6 +311,11 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
                         <TableCell className="text-right text-success">{formatCurrency(entry.interestPayment)}</TableCell>
                         <TableCell className="text-right font-semibold">{formatCurrency(entry.totalPayment)}</TableCell>
                         <TableCell className="text-right text-muted-foreground">{formatCurrency(entry.principalBalance)}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={entry.status === 'Paid' ? 'default' : 'secondary'} className="text-xs">
+                            {entry.status}
+                          </Badge>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
