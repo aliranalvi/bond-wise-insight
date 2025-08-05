@@ -196,12 +196,13 @@ export const BondAnalyzer = () => {
     
     let headerRowIndex = -1;
     
-    // Find the header row
+    // Find the header row - look for a row containing both "Date" and "Name Of Bond"
     for (let i = 0; i < rawData.length; i++) {
       const row = rawData[i] as any[];
       if (row && row.some(cell => 
-        cell && typeof cell === 'string' && 
-        (cell.toLowerCase().includes('date') && cell.toLowerCase().includes('name of bond'))
+        cell && typeof cell === 'string' && cell.toLowerCase().includes('date')
+      ) && row.some(cell => 
+        cell && typeof cell === 'string' && cell.toLowerCase().includes('name of bond')
       )) {
         headerRowIndex = i;
         break;
@@ -209,27 +210,31 @@ export const BondAnalyzer = () => {
     }
     
     if (headerRowIndex === -1) {
+      console.log('No repayment header row found in sheet');
       return []; // No repayment data found
     }
     
     const headers = rawData[headerRowIndex] as string[];
+    console.log('Repayment headers found:', headers);
     
-    // Map column indices
+    // Map column indices - match exact headers from the screenshot
     const columnMap: { [key: string]: number } = {};
     headers.forEach((header, index) => {
       if (header && typeof header === 'string') {
-        const cleanHeader = header.toLowerCase().trim();
-        if (cleanHeader.includes('date') && !cleanHeader.includes('maturity')) columnMap.date = index;
-        else if (cleanHeader.includes('name of bond')) columnMap.bondName = index;
-        else if (cleanHeader.includes('isin')) columnMap.isin = index;
-        else if (cleanHeader.includes('no. of units')) columnMap.units = index;
-        else if (cleanHeader.includes('amount in bank')) columnMap.amountInBank = index;
-        else if (cleanHeader.includes('principal repaid')) columnMap.principalRepaid = index;
-        else if (cleanHeader.includes('interest paid (before tds deduction)')) columnMap.interestPaidBeforeTDS = index;
-        else if (cleanHeader.includes('interest paid (after tds deduction)')) columnMap.interestPaidAfterTDS = index;
-        else if (cleanHeader.includes('tds deducted')) columnMap.tdsDeducted = index;
+        const cleanHeader = header.trim();
+        if (cleanHeader === 'Date') columnMap.date = index;
+        else if (cleanHeader === 'Name Of Bond') columnMap.bondName = index;
+        else if (cleanHeader === 'ISIN') columnMap.isin = index;
+        else if (cleanHeader === 'No. Of Units') columnMap.units = index;
+        else if (cleanHeader === 'Amount in Bank') columnMap.amountInBank = index;
+        else if (cleanHeader === 'Principal Repaid') columnMap.principalRepaid = index;
+        else if (cleanHeader === 'Interest Paid (Before TDS Deduction)') columnMap.interestPaidBeforeTDS = index;
+        else if (cleanHeader === 'Interest Paid (After TDS Deduction)') columnMap.interestPaidAfterTDS = index;
+        else if (cleanHeader === 'TDS Deducted') columnMap.tdsDeducted = index;
       }
     });
+    
+    console.log('Column mapping:', columnMap);
     
     // Process data rows
     for (let i = headerRowIndex + 1; i < rawData.length; i++) {
@@ -254,9 +259,9 @@ export const BondAnalyzer = () => {
         continue;
       }
       
-      // Validate date format (DD/MM/YYYY)
+      // Validate date format (DD/MM/YYYY) - skip if not valid date
       const dateStr = row[columnMap.date]?.toString() || '';
-      if (!dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+      if (!dateStr || !dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
         continue;
       }
       
@@ -277,6 +282,7 @@ export const BondAnalyzer = () => {
         };
         
         cleanedData.push(repaymentEntry);
+        console.log('Added repayment entry:', repaymentEntry);
       } catch (error) {
         console.warn('Error processing repayment row:', i, error);
         continue;

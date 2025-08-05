@@ -78,6 +78,10 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
   const bondRepaymentData = repaymentData.filter(entry => 
     entry.bondName === bondName || entry.isin === bondData?.isin
   );
+  
+  console.log('Bond name:', bondName, 'Bond ISIN:', bondData?.isin);
+  console.log('All repayment data:', repaymentData);
+  console.log('Filtered repayment data for this bond:', bondRepaymentData);
 
   // Calculate actual payments from repayment data
   const actualPrincipalRepaid = bondRepaymentData.reduce((sum, entry) => sum + entry.principalRepaid, 0);
