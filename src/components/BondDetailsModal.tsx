@@ -226,8 +226,8 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
             </Card>
           </div>
 
-          {/* Payment Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Payment Details - 3 column layout */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="bg-gradient-subtle border-primary/20">
               <CardHeader>
                 <Tooltip>
@@ -281,50 +281,34 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
                 </div>
               </CardContent>
             </Card>
-          </div>
 
-          {/* Interest Status */}
-          <Card className="bg-gradient-subtle border-primary/20">
-            <CardHeader>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <CardTitle className="text-lg flex items-center gap-2 cursor-help">
-                    <Percent className="w-5 h-5 text-success" />
-                    Interest Status
-                    <Info className="w-4 h-4 text-muted-foreground" />
-                  </CardTitle>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Interest payment status - actual payments vs projected future payments</p>
-                </TooltipContent>
-              </Tooltip>
-            </CardHeader>
-            <CardContent>
-              <div>
+            <Card className="bg-gradient-subtle border-primary/20">
+              <CardHeader>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <h4 className="font-semibold mb-3 text-primary cursor-help flex items-center gap-1">
-                      Paid So Far
-                      <Info className="w-3 h-3 text-muted-foreground" />
-                    </h4>
+                    <CardTitle className="text-lg flex items-center gap-2 cursor-help">
+                      <Percent className="w-5 h-5 text-success" />
+                      Interest Status
+                      <Info className="w-4 h-4 text-muted-foreground" />
+                    </CardTitle>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Interest payments received from repayment summary report</p>
                   </TooltipContent>
                 </Tooltip>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground text-sm">Before TDS:</span>
-                    <span className="font-semibold text-success">{formatCurrency(actualInterestPaidBeforeTDS)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground text-sm">After TDS:</span>
-                    <span className="font-semibold text-success">{formatCurrency(actualInterestPaidAfterTDS)}</span>
-                  </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Before TDS:</span>
+                  <span className="font-semibold text-success">{formatCurrency(actualInterestPaidBeforeTDS)}</span>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">After TDS:</span>
+                  <span className="font-semibold text-success">{formatCurrency(actualInterestPaidAfterTDS)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Repayment Schedule */}
           <Card className="bg-gradient-subtle border-primary/20">

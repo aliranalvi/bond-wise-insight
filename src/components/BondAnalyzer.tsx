@@ -505,10 +505,10 @@ export const BondAnalyzer = () => {
                       <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                         <TrendingUp className="w-5 h-5 text-primary" />
                       </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Investment</p>
-                        <p className="text-lg font-bold">₹{totalInvestment.toLocaleString('en-IN')}</p>
-                      </div>
+                       <div className="min-h-[3rem] flex flex-col justify-center">
+                         <p className="text-sm text-muted-foreground">Total Investment</p>
+                         <p className="text-lg font-bold">₹{totalInvestment.toLocaleString('en-IN')}</p>
+                       </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -526,10 +526,10 @@ export const BondAnalyzer = () => {
                       <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
                         <Calendar className="w-5 h-5 text-success" />
                       </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Active Bonds</p>
-                        <p className="text-lg font-bold text-success">{totalActive}</p>
-                      </div>
+                       <div className="min-h-[3rem] flex flex-col justify-center">
+                         <p className="text-sm text-muted-foreground">Active Bonds</p>
+                         <p className="text-lg font-bold text-success">{totalActive}</p>
+                       </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -547,10 +547,10 @@ export const BondAnalyzer = () => {
                       <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
                         <TrendingUp className="w-5 h-5 text-success" />
                       </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Active Investment</p>
-                        <p className="text-lg font-bold text-success">₹{activeInvestment.toLocaleString('en-IN')}</p>
-                      </div>
+                       <div className="min-h-[3rem] flex flex-col justify-center">
+                         <p className="text-sm text-muted-foreground">Active Investment</p>
+                         <p className="text-lg font-bold text-success">₹{activeInvestment.toLocaleString('en-IN')}</p>
+                       </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -568,10 +568,10 @@ export const BondAnalyzer = () => {
                       <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
                         <Calendar className="w-5 h-5 text-warning" />
                       </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Matured Bonds</p>
-                        <p className="text-lg font-bold text-warning">{totalMatured}</p>
-                      </div>
+                       <div className="min-h-[3rem] flex flex-col justify-center">
+                         <p className="text-sm text-muted-foreground">Matured Bonds</p>
+                         <p className="text-lg font-bold text-warning">{totalMatured}</p>
+                       </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -589,10 +589,10 @@ export const BondAnalyzer = () => {
                       <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
                         <TrendingUp className="w-5 h-5 text-warning" />
                       </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Matured Investment</p>
-                        <p className="text-lg font-bold text-warning">₹{maturedInvestment.toLocaleString('en-IN')}</p>
-                      </div>
+                       <div className="min-h-[3rem] flex flex-col justify-center">
+                         <p className="text-sm text-muted-foreground">Matured Investment</p>
+                         <p className="text-lg font-bold text-warning">₹{maturedInvestment.toLocaleString('en-IN')}</p>
+                       </div>
                     </div>
                   </CardContent>
                 </Card>
