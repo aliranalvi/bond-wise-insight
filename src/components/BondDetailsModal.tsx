@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, TrendingUp, Percent, Clock, Banknote, Receipt } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { CalendarDays, TrendingUp, Percent, Clock, Banknote, Receipt, Info } from 'lucide-react';
 
 interface BondData {
   bondName: string;
@@ -88,47 +89,78 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
   const actualInterestPaidBeforeTDS = bondRepaymentData.reduce((sum, entry) => sum + entry.interestPaidBeforeTDS, 0);
   const actualInterestPaidAfterTDS = bondRepaymentData.reduce((sum, entry) => sum + entry.interestPaidAfterTDS, 0);
 
-  // Generate repayment schedule with status
+  // Generate repayment schedule based on actual Excel data and projections
   const generateRepaymentSchedule = (): (RepaymentScheduleEntry & { status: 'Paid' | 'Yet To Be Paid' })[] => {
     if (!bondData) return [];
     
     const schedule: (RepaymentScheduleEntry & { status: 'Paid' | 'Yet To Be Paid' })[] = [];
+    
+    // Create a set of all payment dates from Excel data and projected dates
+    const allDates = new Set<string>();
+    
+    // Add actual payment dates from Excel
+    bondRepaymentData.forEach(entry => {
+      allDates.add(entry.date);
+    });
+    
+    // Add projected monthly payment dates
     const startDate = new Date(bondData.dateOfInvestment.split('/').reverse().join('-'));
     const endDate = new Date(bondData.maturityDate.split('/').reverse().join('-'));
-    const monthsDiff = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
+    const monthsDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
     
-    const monthlyInterest = (bondData.investedAmount * (bondData.xirr / 100)) / 12;
-    const principalPerMonth = bondData.investedAmount / Math.max(1, monthsDiff);
-    
-    let remainingPrincipal = bondData.investedAmount;
-    
-    for (let i = 1; i <= Math.ceil(monthsDiff); i++) {
+    for (let i = 1; i <= monthsDiff; i++) {
       const paymentDate = new Date(startDate);
       paymentDate.setMonth(paymentDate.getMonth() + i);
+      const dateStr = paymentDate.toLocaleDateString('en-GB'); // DD/MM/YYYY format
+      allDates.add(dateStr);
+    }
+    
+    // Sort dates chronologically
+    const sortedDates = Array.from(allDates).sort((a, b) => {
+      const [dayA, monthA, yearA] = a.split('/');
+      const [dayB, monthB, yearB] = b.split('/');
+      const dateA = new Date(parseInt(yearA), parseInt(monthA) - 1, parseInt(dayA));
+      const dateB = new Date(parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
+      return dateA.getTime() - dateB.getTime();
+    });
+    
+    let remainingPrincipal = bondData.investedAmount;
+    const monthlyInterest = (bondData.investedAmount * (bondData.xirr / 100)) / 12;
+    
+    sortedDates.forEach(dateStr => {
+      // Find actual payment data for this date
+      const actualPayment = bondRepaymentData.find(entry => entry.date === dateStr);
       
-      const principalPayment = Math.min(principalPerMonth, remainingPrincipal);
+      let principalPayment = 0;
+      let interestPayment = monthlyInterest;
+      let status: 'Paid' | 'Yet To Be Paid' = 'Yet To Be Paid';
+      
+      if (actualPayment) {
+        // Use actual data from Excel
+        principalPayment = actualPayment.principalRepaid;
+        interestPayment = actualPayment.interestPaidBeforeTDS;
+        status = 'Paid';
+      } else {
+        // Projected payment - only if there's remaining principal
+        if (remainingPrincipal > 0) {
+          const projectedPrincipal = remainingPrincipal / Math.max(1, sortedDates.length - schedule.length);
+          principalPayment = Math.min(projectedPrincipal, remainingPrincipal);
+        }
+      }
+      
       remainingPrincipal -= principalPayment;
       
-      // Check if this payment has been made based on repayment data
-      const paymentDateStr = paymentDate.toLocaleDateString('en-IN');
-      const isPaid = bondRepaymentData.some(entry => {
-        // Parse DD/MM/YYYY format from repayment data
-        const [day, month, year] = entry.date.split('/');
-        const entryDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-        return Math.abs(entryDate.getTime() - paymentDate.getTime()) < 45 * 24 * 60 * 60 * 1000; // Within 45 days
-      });
-      
-      schedule.push({
-        date: paymentDateStr,
-        principalPayment,
-        interestPayment: monthlyInterest,
-        principalBalance: remainingPrincipal,
-        totalPayment: principalPayment + monthlyInterest,
-        status: isPaid ? 'Paid' : 'Yet To Be Paid'
-      });
-      
-      if (remainingPrincipal <= 0) break;
-    }
+      if (principalPayment > 0 || interestPayment > 0) {
+        schedule.push({
+          date: dateStr,
+          principalPayment,
+          interestPayment,
+          principalBalance: Math.max(0, remainingPrincipal),
+          totalPayment: principalPayment + interestPayment,
+          status
+        });
+      }
+    });
     
     return schedule;
   };
@@ -144,27 +176,36 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
   if (!bondData) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-card border-0">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-primary flex items-center gap-2">
-            <TrendingUp className="w-6 h-6" />
-            {bondName}
-          </DialogTitle>
-          <DialogDescription className="text-base">
-            Issued by <span className="font-semibold text-primary">{issuer}</span> • ISIN: {bondData.isin}
-          </DialogDescription>
-        </DialogHeader>
+    <TooltipProvider>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-gradient-card border-0">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-primary flex items-center gap-2">
+              <TrendingUp className="w-6 h-6" />
+              {bondName}
+            </DialogTitle>
+            <DialogDescription className="text-base">
+              Issued by <span className="font-semibold text-primary">{issuer}</span> • ISIN: {bondData.isin}
+            </DialogDescription>
+          </DialogHeader>
 
         <div className="space-y-6">
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="bg-gradient-subtle border-primary/20">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Banknote className="w-4 h-4 text-primary" />
-                  Principal
-                </CardTitle>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <CardTitle className="text-sm flex items-center gap-2 cursor-help">
+                      <Banknote className="w-4 h-4 text-primary" />
+                      Principal
+                      <Info className="w-3 h-3 text-muted-foreground" />
+                    </CardTitle>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Total principal amount invested in this bond</p>
+                  </TooltipContent>
+                </Tooltip>
               </CardHeader>
               <CardContent>
                 <p className="text-xl font-bold text-primary">{formatCurrency(bondData.investedAmount)}</p>
@@ -174,10 +215,18 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
 
             <Card className="bg-gradient-subtle border-primary/20">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Percent className="w-4 h-4 text-success" />
-                  XIRR
-                </CardTitle>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <CardTitle className="text-sm flex items-center gap-2 cursor-help">
+                      <Percent className="w-4 h-4 text-success" />
+                      XIRR
+                      <Info className="w-3 h-3 text-muted-foreground" />
+                    </CardTitle>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Extended Internal Rate of Return - annualized return rate</p>
+                  </TooltipContent>
+                </Tooltip>
               </CardHeader>
               <CardContent>
                 <p className="text-xl font-bold text-success">{bondData.xirr.toFixed(2)}%</p>
@@ -187,10 +236,18 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
 
             <Card className="bg-gradient-subtle border-primary/20">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4 text-primary" />
-                  Investment Date
-                </CardTitle>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <CardTitle className="text-sm flex items-center gap-2 cursor-help">
+                      <CalendarDays className="w-4 h-4 text-primary" />
+                      Investment Date
+                      <Info className="w-3 h-3 text-muted-foreground" />
+                    </CardTitle>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Date when you invested in this bond</p>
+                  </TooltipContent>
+                </Tooltip>
               </CardHeader>
               <CardContent>
                 <p className="text-lg font-semibold">{formatDate(bondData.dateOfInvestment)}</p>
@@ -199,10 +256,18 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
 
             <Card className="bg-gradient-subtle border-primary/20">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-warning" />
-                  Maturity Date
-                </CardTitle>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <CardTitle className="text-sm flex items-center gap-2 cursor-help">
+                      <Clock className="w-4 h-4 text-warning" />
+                      Maturity Date
+                      <Info className="w-3 h-3 text-muted-foreground" />
+                    </CardTitle>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Date when the bond will fully mature</p>
+                  </TooltipContent>
+                </Tooltip>
               </CardHeader>
               <CardContent>
                 <p className="text-lg font-semibold">{formatDate(bondData.maturityDate)}</p>
@@ -217,10 +282,18 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="bg-gradient-subtle border-primary/20">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Receipt className="w-5 h-5 text-primary" />
-                  Payment Frequencies
-                </CardTitle>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <CardTitle className="text-lg flex items-center gap-2 cursor-help">
+                      <Receipt className="w-5 h-5 text-primary" />
+                      Payment Frequencies
+                      <Info className="w-4 h-4 text-muted-foreground" />
+                    </CardTitle>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>How frequently interest and principal payments are made</p>
+                  </TooltipContent>
+                </Tooltip>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
@@ -236,10 +309,18 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
 
             <Card className="bg-gradient-subtle border-primary/20">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-success" />
-                  Principal Status
-                </CardTitle>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <CardTitle className="text-lg flex items-center gap-2 cursor-help">
+                      <TrendingUp className="w-5 h-5 text-success" />
+                      Principal Status
+                      <Info className="w-4 h-4 text-muted-foreground" />
+                    </CardTitle>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Principal repayment status based on actual payments received</p>
+                  </TooltipContent>
+                </Tooltip>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
@@ -257,14 +338,32 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
           {/* Interest Status */}
           <Card className="bg-gradient-subtle border-primary/20">
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Percent className="w-5 h-5 text-success" />
-                Interest Status
-              </CardTitle>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CardTitle className="text-lg flex items-center gap-2 cursor-help">
+                    <Percent className="w-5 h-5 text-success" />
+                    Interest Status
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                  </CardTitle>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Interest payment status - actual payments vs projected future payments</p>
+                </TooltipContent>
+              </Tooltip>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h4 className="font-semibold mb-3 text-primary">Paid So Far</h4>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <h4 className="font-semibold mb-3 text-primary cursor-help flex items-center gap-1">
+                      Paid So Far
+                      <Info className="w-3 h-3 text-muted-foreground" />
+                    </h4>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Interest payments received from repayment summary report</p>
+                  </TooltipContent>
+                </Tooltip>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground text-sm">Before TDS:</span>
@@ -277,7 +376,17 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
                 </div>
               </div>
               <div>
-                <h4 className="font-semibold mb-3 text-warning">Future Payment</h4>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <h4 className="font-semibold mb-3 text-warning cursor-help flex items-center gap-1">
+                      Future Payment
+                      <Info className="w-3 h-3 text-muted-foreground" />
+                    </h4>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Projected interest payments based on XIRR and remaining tenure</p>
+                  </TooltipContent>
+                </Tooltip>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground text-sm">Projected:</span>
@@ -294,43 +403,52 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
           {/* Repayment Schedule */}
           <Card className="bg-gradient-subtle border-primary/20">
             <CardHeader>
-              <CardTitle className="text-lg">Repayment Schedule</CardTitle>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CardTitle className="text-lg flex items-center gap-2 cursor-help">
+                    Repayment Schedule
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                  </CardTitle>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Detailed payment schedule showing actual and projected payments</p>
+                </TooltipContent>
+              </Tooltip>
             </CardHeader>
             <CardContent>
-              <div className="max-h-80 overflow-y-auto border rounded-lg">
-                <Table>
-                  <TableHeader className="sticky top-0 bg-muted z-10">
-                    <TableRow>
-                      <TableHead className="font-semibold">Payment Date</TableHead>
-                      <TableHead className="font-semibold text-right">Principal Payment</TableHead>
-                      <TableHead className="font-semibold text-right">Interest Payment</TableHead>
-                      <TableHead className="font-semibold text-right">Total Payment</TableHead>
-                      <TableHead className="font-semibold text-right">Principal Balance</TableHead>
-                      <TableHead className="font-semibold text-center">Status</TableHead>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-semibold">Payment Date</TableHead>
+                    <TableHead className="font-semibold text-right">Principal Payment</TableHead>
+                    <TableHead className="font-semibold text-right">Interest Payment</TableHead>
+                    <TableHead className="font-semibold text-right">Total Payment</TableHead>
+                    <TableHead className="font-semibold text-right">Principal Balance</TableHead>
+                    <TableHead className="font-semibold text-center">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {repaymentSchedule.map((entry, index) => (
+                    <TableRow key={index} className="border-border">
+                      <TableCell className="font-medium">{entry.date}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(entry.principalPayment)}</TableCell>
+                      <TableCell className="text-right text-success">{formatCurrency(entry.interestPayment)}</TableCell>
+                      <TableCell className="text-right font-semibold">{formatCurrency(entry.totalPayment)}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{formatCurrency(entry.principalBalance)}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant={entry.status === 'Paid' ? 'default' : 'secondary'} className="text-xs">
+                          {entry.status}
+                        </Badge>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {repaymentSchedule.map((entry, index) => (
-                      <TableRow key={index} className="border-border">
-                        <TableCell className="font-medium">{entry.date}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(entry.principalPayment)}</TableCell>
-                        <TableCell className="text-right text-success">{formatCurrency(entry.interestPayment)}</TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(entry.totalPayment)}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{formatCurrency(entry.principalBalance)}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant={entry.status === 'Paid' ? 'default' : 'secondary'} className="text-xs">
-                            {entry.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </div>
       </DialogContent>
     </Dialog>
+    </TooltipProvider>
   );
 };
