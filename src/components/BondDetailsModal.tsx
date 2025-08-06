@@ -89,89 +89,37 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
   const actualInterestPaidBeforeTDS = bondRepaymentData.reduce((sum, entry) => sum + entry.interestPaidBeforeTDS, 0);
   const actualInterestPaidAfterTDS = bondRepaymentData.reduce((sum, entry) => sum + entry.interestPaidAfterTDS, 0);
 
-  // Generate repayment schedule based on actual Excel data and projections
+  // Generate repayment schedule based only on actual Excel data
   const generateRepaymentSchedule = (): (RepaymentScheduleEntry & { status: 'Paid' | 'Yet To Be Paid' })[] => {
     if (!bondData) return [];
     
-    const schedule: (RepaymentScheduleEntry & { status: 'Paid' | 'Yet To Be Paid' })[] = [];
-    
-    // Create a set of all payment dates from Excel data and projected dates
-    const allDates = new Set<string>();
-    
-    // Add actual payment dates from Excel
-    bondRepaymentData.forEach(entry => {
-      allDates.add(entry.date);
-    });
-    
-    // Add projected monthly payment dates
-    const startDate = new Date(bondData.dateOfInvestment.split('/').reverse().join('-'));
-    const endDate = new Date(bondData.maturityDate.split('/').reverse().join('-'));
-    const monthsDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
-    
-    for (let i = 1; i <= monthsDiff; i++) {
-      const paymentDate = new Date(startDate);
-      paymentDate.setMonth(paymentDate.getMonth() + i);
-      const dateStr = paymentDate.toLocaleDateString('en-GB'); // DD/MM/YYYY format
-      allDates.add(dateStr);
-    }
-    
-    // Sort dates chronologically
-    const sortedDates = Array.from(allDates).sort((a, b) => {
-      const [dayA, monthA, yearA] = a.split('/');
-      const [dayB, monthB, yearB] = b.split('/');
+    // Only use actual Excel data, no projections
+    return bondRepaymentData.map(entry => ({
+      date: entry.date,
+      principalPayment: entry.principalRepaid,
+      interestPayment: entry.interestPaidBeforeTDS,
+      principalBalance: 0, // We'll calculate this based on cumulative principal repaid
+      totalPayment: entry.principalRepaid + entry.interestPaidBeforeTDS,
+      status: 'Paid' as const
+    })).sort((a, b) => {
+      // Sort by date
+      const [dayA, monthA, yearA] = a.date.split('/');
+      const [dayB, monthB, yearB] = b.date.split('/');
       const dateA = new Date(parseInt(yearA), parseInt(monthA) - 1, parseInt(dayA));
       const dateB = new Date(parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
       return dateA.getTime() - dateB.getTime();
+    }).map((entry, index, array) => {
+      // Calculate principal balance based on cumulative principal repaid
+      const cumulativePrincipalRepaid = array.slice(0, index + 1).reduce((sum, e) => sum + e.principalPayment, 0);
+      return {
+        ...entry,
+        principalBalance: Math.max(0, bondData!.investedAmount - cumulativePrincipalRepaid)
+      };
     });
-    
-    let remainingPrincipal = bondData.investedAmount;
-    const monthlyInterest = (bondData.investedAmount * (bondData.xirr / 100)) / 12;
-    
-    sortedDates.forEach(dateStr => {
-      // Find actual payment data for this date
-      const actualPayment = bondRepaymentData.find(entry => entry.date === dateStr);
-      
-      let principalPayment = 0;
-      let interestPayment = monthlyInterest;
-      let status: 'Paid' | 'Yet To Be Paid' = 'Yet To Be Paid';
-      
-      if (actualPayment) {
-        // Use actual data from Excel
-        principalPayment = actualPayment.principalRepaid;
-        interestPayment = actualPayment.interestPaidBeforeTDS;
-        status = 'Paid';
-      } else {
-        // Projected payment - only if there's remaining principal
-        if (remainingPrincipal > 0) {
-          const projectedPrincipal = remainingPrincipal / Math.max(1, sortedDates.length - schedule.length);
-          principalPayment = Math.min(projectedPrincipal, remainingPrincipal);
-        }
-      }
-      
-      remainingPrincipal -= principalPayment;
-      
-      if (principalPayment > 0 || interestPayment > 0) {
-        schedule.push({
-          date: dateStr,
-          principalPayment,
-          interestPayment,
-          principalBalance: Math.max(0, remainingPrincipal),
-          totalPayment: principalPayment + interestPayment,
-          status
-        });
-      }
-    });
-    
-    return schedule;
   };
 
   const repaymentSchedule = generateRepaymentSchedule();
   const principalRemaining = bondData ? bondData.investedAmount - actualPrincipalRepaid : 0;
-  
-  // Calculate future interest projections
-  const futureInterestPayments = repaymentSchedule
-    .filter(entry => entry.status === 'Yet To Be Paid')
-    .reduce((sum, entry) => sum + entry.interestPayment, 0);
 
   if (!bondData) return null;
 
@@ -351,7 +299,7 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
                 </TooltipContent>
               </Tooltip>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <CardContent>
               <div>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -372,28 +320,6 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
                   <div className="flex justify-between">
                     <span className="text-muted-foreground text-sm">After TDS:</span>
                     <span className="font-semibold text-success">{formatCurrency(actualInterestPaidAfterTDS)}</span>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <h4 className="font-semibold mb-3 text-warning cursor-help flex items-center gap-1">
-                      Future Payment
-                      <Info className="w-3 h-3 text-muted-foreground" />
-                    </h4>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Projected interest payments based on XIRR and remaining tenure</p>
-                  </TooltipContent>
-                </Tooltip>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground text-sm">Projected:</span>
-                    <span className="font-semibold text-warning">{formatCurrency(futureInterestPayments)}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-2">
-                    <p>* Based on projected schedule</p>
                   </div>
                 </div>
               </div>
