@@ -338,20 +338,23 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {repaymentSchedule.map((entry, index) => (
-                    <TableRow key={index} className="border-border">
-                      <TableCell className="font-medium">{entry.date}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(entry.principalPayment)}</TableCell>
-                      <TableCell className="text-right text-success">{formatCurrency(entry.interestPayment)}</TableCell>
-                      <TableCell className="text-right font-semibold">{formatCurrency(entry.totalPayment)}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{formatCurrency(entry.principalBalance)}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant={entry.status === 'Paid' ? 'default' : 'secondary'} className="text-xs">
-                          {entry.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {repaymentSchedule.map((entry, index) => {
+                    const hasBothPayments = entry.principalPayment > 0 && entry.interestPayment > 0;
+                    return (
+                      <TableRow key={index} className={`border-border ${hasBothPayments ? 'bg-muted/60' : ''}`}>
+                        <TableCell className="font-medium">{entry.date}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(entry.principalPayment)}</TableCell>
+                        <TableCell className="text-right text-success">{formatCurrency(entry.interestPayment)}</TableCell>
+                        <TableCell className="text-right font-semibold">{formatCurrency(entry.totalPayment)}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{formatCurrency(entry.principalBalance)}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={entry.status === 'Paid' ? 'default' : 'secondary'} className="text-xs">
+                            {entry.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>

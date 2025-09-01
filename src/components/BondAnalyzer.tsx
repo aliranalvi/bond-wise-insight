@@ -418,7 +418,7 @@ export const BondAnalyzer = () => {
               <div>
                 <h3 className="text-lg font-semibold mb-2">Upload Excel File</h3>
                 <p className="text-muted-foreground mb-4">
-                  Select your Investment Summary Report from Wint Wealth or similar platforms
+                  Select your Investment Summary Report from Wint Wealth
                 </p>
                 <input
                   id="file-upload"
@@ -496,7 +496,7 @@ export const BondAnalyzer = () => {
         </div>
         
         <TooltipProvider>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Card className="shadow-soft bg-gradient-card border-0 flex-1">
@@ -505,10 +505,10 @@ export const BondAnalyzer = () => {
                       <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                         <TrendingUp className="w-5 h-5 text-primary" />
                       </div>
-                       <div className="min-h-[3rem] flex flex-col justify-center">
-                         <p className="text-sm text-muted-foreground">Total Investment</p>
-                         <p className="text-lg font-bold">₹{totalInvestment.toLocaleString('en-IN')}</p>
-                       </div>
+                        <div className="min-h-[4rem] flex flex-col justify-end">
+                          <p className="text-sm text-muted-foreground leading-tight mb-1">Total<br/>Investment</p>
+                          <p className="text-xl font-bold">₹{totalInvestment.toLocaleString('en-IN')}</p>
+                        </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -526,10 +526,10 @@ export const BondAnalyzer = () => {
                       <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
                         <Calendar className="w-5 h-5 text-success" />
                       </div>
-                       <div className="min-h-[3rem] flex flex-col justify-center">
-                         <p className="text-sm text-muted-foreground">Active Bonds</p>
-                         <p className="text-lg font-bold text-success">{totalActive}</p>
-                       </div>
+                        <div className="min-h-[4rem] flex flex-col justify-end">
+                          <p className="text-sm text-muted-foreground leading-tight mb-1">Active<br/>Bonds</p>
+                          <p className="text-xl font-bold text-success">{totalActive}</p>
+                        </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -547,10 +547,10 @@ export const BondAnalyzer = () => {
                       <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
                         <TrendingUp className="w-5 h-5 text-success" />
                       </div>
-                       <div className="min-h-[3rem] flex flex-col justify-center">
-                         <p className="text-sm text-muted-foreground">Active Investment</p>
-                         <p className="text-lg font-bold text-success">₹{activeInvestment.toLocaleString('en-IN')}</p>
-                       </div>
+                        <div className="min-h-[4rem] flex flex-col justify-end">
+                          <p className="text-sm text-muted-foreground leading-tight mb-1">Active<br/>Investment</p>
+                          <p className="text-xl font-bold text-success">₹{activeInvestment.toLocaleString('en-IN')}</p>
+                        </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -568,10 +568,10 @@ export const BondAnalyzer = () => {
                       <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
                         <Calendar className="w-5 h-5 text-warning" />
                       </div>
-                       <div className="min-h-[3rem] flex flex-col justify-center">
-                         <p className="text-sm text-muted-foreground">Matured Bonds</p>
-                         <p className="text-lg font-bold text-warning">{totalMatured}</p>
-                       </div>
+                        <div className="min-h-[4rem] flex flex-col justify-end">
+                          <p className="text-sm text-muted-foreground leading-tight mb-1">Matured<br/>Bonds</p>
+                          <p className="text-xl font-bold text-warning">{totalMatured}</p>
+                        </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -589,10 +589,10 @@ export const BondAnalyzer = () => {
                       <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
                         <TrendingUp className="w-5 h-5 text-warning" />
                       </div>
-                       <div className="min-h-[3rem] flex flex-col justify-center">
-                         <p className="text-sm text-muted-foreground">Matured Investment</p>
-                         <p className="text-lg font-bold text-warning">₹{maturedInvestment.toLocaleString('en-IN')}</p>
-                       </div>
+                        <div className="min-h-[4rem] flex flex-col justify-end">
+                          <p className="text-sm text-muted-foreground leading-tight mb-1">Matured<br/>Investment</p>
+                          <p className="text-xl font-bold text-warning">₹{maturedInvestment.toLocaleString('en-IN')}</p>
+                        </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -610,9 +610,9 @@ export const BondAnalyzer = () => {
                       <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
                         <FileSpreadsheet className="w-5 h-5 text-accent" />
                       </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Unique Issuers</p>
-                        <p className="text-lg font-bold text-accent">{Object.keys(pivotData).length}</p>
+                      <div className="min-h-[4rem] flex flex-col justify-end">
+                        <p className="text-sm text-muted-foreground leading-tight mb-1">Unique<br/>Issuers</p>
+                        <p className="text-xl font-bold text-accent">{Object.keys(pivotData).length}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -623,31 +623,6 @@ export const BondAnalyzer = () => {
               </TooltipContent>
             </Tooltip>
             
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Card className="shadow-soft bg-gradient-card border-0 flex-1">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <TrendingUp className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Overall XIRR</p>
-                        <p className="text-lg font-bold text-primary">
-                          {bondData.length > 0 ? 
-                            (bondData.reduce((sum, bond) => sum + bond.xirr, 0) / bondData.length).toFixed(2) + '%' : 
-                            '0.00%'
-                          }
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Average XIRR across all bonds (active and matured)</p>
-              </TooltipContent>
-            </Tooltip>
           </div>
         </TooltipProvider>
         
