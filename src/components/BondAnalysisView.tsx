@@ -5,7 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ChevronDown, ChevronRight, Calendar, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronDown, ChevronRight, Calendar, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BondDetailsModal } from './BondDetailsModal';
 
 interface BondData {
@@ -53,6 +54,7 @@ interface BondAnalysisViewProps {
 
 type DurationFilter = 'This Year' | 'Last Year' | 'All Time';
 type DurationView = 'Years' | 'Quarters' | 'Months';
+type TableView = 'Investment' | 'Principal Repayment' | 'Interest Repayment' | 'Principal & Interest Repayment';
 
 type SortField = 'issuer' | 'investment';
 type SortDirection = 'asc' | 'desc';
@@ -65,6 +67,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
   const [sortField, setSortField] = useState<SortField>('issuer');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [selectedBond, setSelectedBond] = useState<{ bondData: BondData | null; bondName: string; issuer: string } | null>(null);
+  const [tableView, setTableView] = useState<TableView>('Investment');
   const tableRef = useRef<HTMLDivElement>(null);
 
   // Reset scroll to top when duration filter or view changes
@@ -195,6 +198,51 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
       }
     });
   }, [filteredPivotData, durationView]);
+
+  // Check if bond is near maturity (30 days)
+  const isNearMaturity = (maturityDateStr: string) => {
+    const maturityDate = new Date(maturityDateStr.split('/').reverse().join('-'));
+    const today = new Date();
+    const diffTime = maturityDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 && diffDays <= 30;
+  };
+
+  // Get repayment data based on table view
+  const getRepaymentDataForView = (bondName: string, issuer: string, period: string) => {
+    const bondDetails = filteredData.find(bond => bond.bondName === bondName && bond.bondIssuer === issuer);
+    if (!bondDetails) return 0;
+    
+    const bondRepayments = repaymentData.filter(r => {
+      const repaymentDate = new Date(r.date.split('/').reverse().join('-'));
+      let periodMatch = false;
+      
+      if (durationView === 'Years') {
+        periodMatch = repaymentDate.getFullYear().toString() === period;
+      } else if (durationView === 'Quarters') {
+        const quarter = `Q${Math.ceil((repaymentDate.getMonth() + 1) / 3)} ${repaymentDate.getFullYear()}`;
+        periodMatch = quarter === period;
+      } else {
+        // Format date as "MMM YYYY" to match period format
+        const monthYear = repaymentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        periodMatch = monthYear === period;
+      }
+      
+      return (r.bondName === bondName || r.isin === bondDetails.isin) && periodMatch;
+    });
+    
+    switch (tableView) {
+      case 'Principal Repayment':
+        return bondRepayments.reduce((sum, r) => sum + r.principalRepaid, 0);
+      case 'Interest Repayment':
+        return bondRepayments.reduce((sum, r) => sum + r.interestPaidAfterTDS, 0);
+      case 'Principal & Interest Repayment':
+        return bondRepayments.reduce((sum, r) => sum + r.principalRepaid + r.interestPaidAfterTDS, 0);
+      case 'Investment':
+      default:
+        return Object.values(filteredPivotData[issuer]?.[bondName] || {})[0] || 0;
+    }
+  };
 
   // Calculate issuer totals
   const issuerTotals = useMemo(() => {
@@ -414,8 +462,23 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           </div>
         )}
         
-        {/* Table */}
+         {/* Table */}
           <div className="relative">
+          {/* Table Header with Filter */}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Active Investments Table</h3>
+            <Select value={tableView} onValueChange={(value: TableView) => setTableView(value)}>
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Select view" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Investment">Investment</SelectItem>
+                <SelectItem value="Principal Repayment">Principal Repayment</SelectItem>
+                <SelectItem value="Interest Repayment">Interest Repayment</SelectItem>
+                <SelectItem value="Principal & Interest Repayment">Principal & Interest Repayment</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           
           <div className="border rounded-lg overflow-hidden">
             <div ref={tableRef} className="overflow-auto max-h-96 relative">
@@ -444,8 +507,8 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                         )}
                       </div>
                     </TableHead>
-                    <TableHead className="font-semibold text-right bg-muted border-r border-border min-w-32">Principal Remaining</TableHead>
-                    <TableHead className="font-semibold text-right bg-muted border-r border-border min-w-32">Interest Repaid</TableHead>
+                     <TableHead className="font-semibold text-right bg-muted border-r border-border min-w-32">Principal Remaining</TableHead>
+                     <TableHead className="font-semibold text-right bg-muted border-r border-border min-w-32">Interest Paid</TableHead>
                     <TableHead className="font-semibold text-center bg-muted border-r border-border min-w-20">Bonds</TableHead>
                     {allTimePeriods.map(period => (
                       <TableHead key={period} className="font-semibold text-right min-w-24 bg-muted">
@@ -473,12 +536,24 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                       <React.Fragment key={issuer}>
                         {/* Issuer Row */}
                         <TableRow className="border-border bg-muted/30 hover:bg-muted/50 cursor-pointer" onClick={() => toggleIssuer(issuer)}>
-                          <TableCell className="sticky left-0 bg-muted z-20 border-r border-border">
-                           <div className="flex items-center space-x-2">
-                               {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                               <span className="font-semibold text-primary">{issuer}</span>
-                             </div>
-                          </TableCell>
+                           <TableCell className="sticky left-0 bg-muted z-20 border-r border-border">
+                            <div className="flex items-center space-x-2">
+                                {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                <span className="font-semibold text-primary">{issuer}</span>
+                                {filteredData.some(bond => bond.bondIssuer === issuer && isNearMaturity(bond.maturityDate)) && (
+                                  <TooltipProvider>
+                                    <UITooltip>
+                                      <TooltipTrigger asChild>
+                                        <AlertTriangle className="w-4 h-4 text-warning cursor-help" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>One or more bonds mature within 30 days</p>
+                                      </TooltipContent>
+                                    </UITooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                           </TableCell>
                            <TableCell className="text-right font-semibold text-primary">
                               {formatCurrency(issuerTotals[issuer])}
                             </TableCell>
@@ -501,15 +576,15 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                               </Badge>
                             </TableCell>
                            {allTimePeriods.map(period => {
-                            const total = Object.values(bonds).reduce((sum, timeData) => {
-                              return sum + (timeData[period] || 0);
-                            }, 0);
-                             return (
-                               <TableCell key={period} className="text-right font-medium">
-                                 {total > 0 ? formatCurrency(total) : '-'}
-                               </TableCell>
-                             );
-                          })}
+                             const total = tableView === 'Investment' 
+                               ? Object.values(bonds).reduce((sum, timeData) => sum + (timeData[period] || 0), 0)
+                               : Object.keys(bonds).reduce((sum, bondName) => sum + getRepaymentDataForView(bondName, issuer, period), 0);
+                              return (
+                                <TableCell key={period} className="text-right font-medium">
+                                  {total > 0 ? formatCurrency(total) : '-'}
+                                </TableCell>
+                              );
+                           })}
                         </TableRow>
                         
                         {/* Bond Series Rows */}
@@ -519,15 +594,33 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                             className="border-border bg-background/50 hover:bg-muted/50 cursor-pointer transition-colors"
                             onClick={() => handleBondClick(bondName, issuer)}
                           >
-                            <TableCell className="sticky left-0 bg-background z-20 pl-8 border-r border-border">
-                              <div className="flex items-center space-x-2">
-                                <Calendar className="w-3 h-3 text-muted-foreground" />
-                                <span className="text-sm hover:text-primary transition-colors">{bondName}</span>
-                              </div>
-                            </TableCell>
-                              <TableCell className="text-right text-sm">
-                                {formatCurrency(Object.values(timeData).reduce((sum, amount) => sum + amount, 0))}
-                              </TableCell>
+                             <TableCell className="sticky left-0 bg-background z-20 pl-8 border-r border-border">
+                               <div className="flex items-center space-x-2">
+                                 <Calendar className="w-3 h-3 text-muted-foreground" />
+                                 <span className="text-sm hover:text-primary transition-colors">{bondName}</span>
+                                 {(() => {
+                                   const bondDetails = filteredData.find(bond => bond.bondName === bondName && bond.bondIssuer === issuer);
+                                   return bondDetails && isNearMaturity(bondDetails.maturityDate) && (
+                                     <TooltipProvider>
+                                       <UITooltip>
+                                         <TooltipTrigger asChild>
+                                           <AlertTriangle className="w-3 h-3 text-warning cursor-help" />
+                                         </TooltipTrigger>
+                                         <TooltipContent>
+                                           <p>Bond matures within 30 days</p>
+                                         </TooltipContent>
+                                       </UITooltip>
+                                     </TooltipProvider>
+                                   );
+                                 })()}
+                               </div>
+                             </TableCell>
+                               <TableCell className="text-right text-sm">
+                                 {tableView === 'Investment' 
+                                   ? formatCurrency(Object.values(timeData).reduce((sum, amount) => sum + amount, 0))
+                                   : formatCurrency(allTimePeriods.reduce((sum, period) => sum + getRepaymentDataForView(bondName, issuer, period), 0))
+                                 }
+                               </TableCell>
                               <TableCell className="text-right text-sm">
                                 {(() => {
                                   const bondDetails = filteredData.find(bond => bond.bondName === bondName && bond.bondIssuer === issuer);
@@ -548,11 +641,16 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                                 })()}
                               </TableCell>
                               <TableCell className="text-center text-sm">-</TableCell>
-                             {allTimePeriods.map(period => (
-                               <TableCell key={period} className="text-right text-sm">
-                                 {timeData[period] ? formatCurrency(timeData[period]) : '-'}
-                               </TableCell>
-                             ))}
+                              {allTimePeriods.map(period => {
+                                const value = tableView === 'Investment' 
+                                  ? timeData[period] 
+                                  : getRepaymentDataForView(bondName, issuer, period);
+                                return (
+                                  <TableCell key={period} className="text-right text-sm">
+                                    {value ? formatCurrency(value) : '-'}
+                                  </TableCell>
+                                );
+                              })}
                           </TableRow>
                         ))}
                       </React.Fragment>
@@ -583,18 +681,24 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                       <TableCell className="text-center font-bold">
                         {filteredData.length}
                       </TableCell>
-                     {allTimePeriods.map(period => {
-                       const periodTotal = Object.values(filteredPivotData).reduce((sum, bonds) => {
-                         return sum + Object.values(bonds).reduce((bondSum, timeData) => {
-                           return bondSum + (timeData[period] || 0);
-                         }, 0);
-                       }, 0);
-                       return (
-                         <TableCell key={period} className="text-right font-bold">
-                           {periodTotal > 0 ? formatCurrency(periodTotal) : '-'}
-                         </TableCell>
-                       );
-                     })}
+                      {allTimePeriods.map(period => {
+                        const periodTotal = tableView === 'Investment' 
+                          ? Object.values(filteredPivotData).reduce((sum, bonds) => {
+                              return sum + Object.values(bonds).reduce((bondSum, timeData) => {
+                                return bondSum + (timeData[period] || 0);
+                              }, 0);
+                            }, 0)
+                          : Object.entries(filteredPivotData).reduce((sum, [issuer, bonds]) => {
+                              return sum + Object.keys(bonds).reduce((bondSum, bondName) => {
+                                return bondSum + getRepaymentDataForView(bondName, issuer, period);
+                              }, 0);
+                            }, 0);
+                        return (
+                          <TableCell key={period} className="text-right font-bold">
+                            {periodTotal > 0 ? formatCurrency(periodTotal) : '-'}
+                          </TableCell>
+                        );
+                      })}
                    </TableRow>
                  </TableBody>
               </Table>
