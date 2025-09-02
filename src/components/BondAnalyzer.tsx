@@ -38,7 +38,7 @@ interface RepaymentData {
 
 interface PivotData {
   [issuer: string]: {
-    [bondName: string]: {
+    [bondKey: string]: { // bondKey = bondName + "|" + isin
       [monthYear: string]: number;
     };
   };
@@ -303,15 +303,18 @@ export const BondAnalyzer = () => {
         pivot[bond.bondIssuer] = {};
       }
       
-      if (!pivot[bond.bondIssuer][bond.bondIssuer]) {
-        pivot[bond.bondIssuer][bond.bondIssuer] = {};
+      // Create unique bond key using bondName + ISIN
+      const bondKey = `${bond.bondName}|${bond.isin}`;
+      
+      if (!pivot[bond.bondIssuer][bondKey]) {
+        pivot[bond.bondIssuer][bondKey] = {};
       }
       
-      if (!pivot[bond.bondIssuer][bond.bondIssuer][bond.monthYear]) {
-        pivot[bond.bondIssuer][bond.bondIssuer][bond.monthYear] = 0;
+      if (!pivot[bond.bondIssuer][bondKey][bond.monthYear]) {
+        pivot[bond.bondIssuer][bondKey][bond.monthYear] = 0;
       }
       
-      pivot[bond.bondIssuer][bond.bondIssuer][bond.monthYear] += bond.investedAmount;
+      pivot[bond.bondIssuer][bondKey][bond.monthYear] += bond.investedAmount;
     });
     
     return pivot;
