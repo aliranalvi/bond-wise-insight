@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronDown, ChevronRight, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Clock } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BondDetailsModal } from './BondDetailsModal';
 
 interface BondData {
@@ -56,6 +57,7 @@ type DurationView = 'Years' | 'Quarters' | 'Months';
 
 type SortField = 'issuer' | 'investment';
 type SortDirection = 'asc' | 'desc';
+type ViewType = 'Investment' | 'Interest Paid' | 'Principal Paid' | 'Principal & Interest Paid';
 
 export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, bondData, repaymentData }) => {
   const [durationFilter, setDurationFilter] = useState<DurationFilter>('All Time');
@@ -65,6 +67,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
   const [sortField, setSortField] = useState<SortField>('issuer');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [selectedBond, setSelectedBond] = useState<{ bondData: BondData | null; bondName: string; issuer: string } | null>(null);
+  const [viewType, setViewType] = useState<ViewType>('Investment');
   const tableRef = useRef<HTMLDivElement>(null);
 
   // Reset scroll to top when duration filter or view changes
@@ -150,34 +153,77 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
     });
   }, [bondData, durationFilter]);
 
-  // Generate filtered pivot data
+  // Generate filtered pivot data based on view type
   const filteredPivotData = useMemo(() => {
     const pivot: PivotData = {};
     
-    filteredData.forEach(bond => {
-      if (!pivot[bond.bondIssuer]) {
-        pivot[bond.bondIssuer] = {};
-      }
-      
-      if (!pivot[bond.bondIssuer][bond.bondName]) {
-        pivot[bond.bondIssuer][bond.bondName] = {};
-      }
-      
-      const timeKey = durationView === 'Years' 
-        ? new Date(bond.dateOfInvestment.split('/').reverse().join('-')).getFullYear().toString()
-        : durationView === 'Quarters'
-        ? `Q${Math.ceil((new Date(bond.dateOfInvestment.split('/').reverse().join('-')).getMonth() + 1) / 3)} ${new Date(bond.dateOfInvestment.split('/').reverse().join('-')).getFullYear()}`
-        : bond.monthYear;
-      
-      if (!pivot[bond.bondIssuer][bond.bondName][timeKey]) {
-        pivot[bond.bondIssuer][bond.bondName][timeKey] = 0;
-      }
-      
-      pivot[bond.bondIssuer][bond.bondName][timeKey] += bond.investedAmount;
-    });
+    if (viewType === 'Investment') {
+      // Original investment view
+      filteredData.forEach(bond => {
+        if (!pivot[bond.bondIssuer]) {
+          pivot[bond.bondIssuer] = {};
+        }
+        
+        if (!pivot[bond.bondIssuer][bond.bondName]) {
+          pivot[bond.bondIssuer][bond.bondName] = {};
+        }
+        
+        const timeKey = durationView === 'Years' 
+          ? new Date(bond.dateOfInvestment.split('/').reverse().join('-')).getFullYear().toString()
+          : durationView === 'Quarters'
+          ? `Q${Math.ceil((new Date(bond.dateOfInvestment.split('/').reverse().join('-')).getMonth() + 1) / 3)} ${new Date(bond.dateOfInvestment.split('/').reverse().join('-')).getFullYear()}`
+          : bond.monthYear;
+        
+        if (!pivot[bond.bondIssuer][bond.bondName][timeKey]) {
+          pivot[bond.bondIssuer][bond.bondName][timeKey] = 0;
+        }
+        
+        pivot[bond.bondIssuer][bond.bondName][timeKey] += bond.investedAmount;
+      });
+    } else {
+      // Repayment views
+      repaymentData.forEach(repayment => {
+        const bond = filteredData.find(b => b.bondName === repayment.bondName);
+        if (!bond) return;
+        
+        if (!pivot[bond.bondIssuer]) {
+          pivot[bond.bondIssuer] = {};
+        }
+        
+        if (!pivot[bond.bondIssuer][repayment.bondName]) {
+          pivot[bond.bondIssuer][repayment.bondName] = {};
+        }
+        
+        const repaymentDate = new Date(repayment.date.split('/').reverse().join('-'));
+        const timeKey = durationView === 'Years' 
+          ? repaymentDate.getFullYear().toString()
+          : durationView === 'Quarters'
+          ? `Q${Math.ceil((repaymentDate.getMonth() + 1) / 3)} ${repaymentDate.getFullYear()}`
+          : repaymentDate.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+        
+        if (!pivot[bond.bondIssuer][repayment.bondName][timeKey]) {
+          pivot[bond.bondIssuer][repayment.bondName][timeKey] = 0;
+        }
+        
+        let amount = 0;
+        switch (viewType) {
+          case 'Interest Paid':
+            amount = repayment.interestPaidAfterTDS;
+            break;
+          case 'Principal Paid':
+            amount = repayment.principalRepaid;
+            break;
+          case 'Principal & Interest Paid':
+            amount = repayment.principalRepaid + repayment.interestPaidAfterTDS;
+            break;
+        }
+        
+        pivot[bond.bondIssuer][repayment.bondName][timeKey] += amount;
+      });
+    }
     
     return pivot;
-  }, [filteredData, durationView]);
+  }, [filteredData, durationView, viewType, repaymentData]);
 
   // Get all unique time periods for column headers
   const allTimePeriods = useMemo(() => {
@@ -323,14 +369,28 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           {/* Duration Filters and KPIs */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                variant={showChart ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowChart(!showChart)}
-                className="text-xs h-8"
-              >
-                {showChart ? "Hide Chart" : "Show Chart"}
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant={showChart ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowChart(!showChart)}
+                  className="text-xs h-8"
+                >
+                  {showChart ? "Hide Chart" : "Show Chart"}
+                </Button>
+                
+                <Select value={viewType} onValueChange={(value: ViewType) => setViewType(value)}>
+                  <SelectTrigger className="w-48 h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Investment">Investment</SelectItem>
+                    <SelectItem value="Interest Paid">Interest Paid</SelectItem>
+                    <SelectItem value="Principal Paid">Principal Paid</SelectItem>
+                    <SelectItem value="Principal & Interest Paid">Principal & Interest Paid</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               
               <div className="flex bg-muted rounded-lg p-1 h-8">
                 {(['This Year', 'Last Year', 'All Time'] as DurationFilter[]).map((filter) => (
@@ -451,7 +511,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                       onClick={() => handleSort('investment')}
                     >
                       <div className="flex items-center justify-end space-x-2">
-                        <span>Investment</span>
+                        <span>{viewType}</span>
                         {sortField === 'investment' && (
                           sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                         )}
