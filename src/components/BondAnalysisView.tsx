@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ChevronDown, ChevronRight, Calendar, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronDown, ChevronRight, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Clock } from 'lucide-react';
 import { BondDetailsModal } from './BondDetailsModal';
 
 interface BondData {
@@ -104,6 +104,19 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
       bondName,
       issuer
     });
+  };
+
+  // Check if bond is near maturity (within 30 days)
+  const isNearMaturity = (maturityDate: string): boolean => {
+    const maturity = new Date(maturityDate.split('/').reverse().join('-'));
+    const today = new Date();
+    const thirtyDaysFromNow = new Date(today.getTime() + (30 * 24 * 60 * 60 * 1000));
+    return maturity <= thirtyDaysFromNow && maturity > today;
+  };
+
+  // Check if any bond in issuer is near maturity
+  const issuerHasNearMaturity = (issuer: string): boolean => {
+    return filteredData.some(bond => bond.bondIssuer === issuer && isNearMaturity(bond.maturityDate));
   };
 
   const formatCurrency = (amount: number): string => {
@@ -445,7 +458,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                       </div>
                     </TableHead>
                     <TableHead className="font-semibold text-right bg-muted border-r border-border min-w-32">Principal Remaining</TableHead>
-                    <TableHead className="font-semibold text-right bg-muted border-r border-border min-w-32">Interest Repaid</TableHead>
+                    <TableHead className="font-semibold text-right bg-muted border-r border-border min-w-32">Interest Paid</TableHead>
                     <TableHead className="font-semibold text-center bg-muted border-r border-border min-w-20">Bonds</TableHead>
                     {allTimePeriods.map(period => (
                       <TableHead key={period} className="font-semibold text-right min-w-24 bg-muted">
@@ -473,12 +486,22 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                       <React.Fragment key={issuer}>
                         {/* Issuer Row */}
                         <TableRow className="border-border bg-muted/30 hover:bg-muted/50 cursor-pointer" onClick={() => toggleIssuer(issuer)}>
-                          <TableCell className="sticky left-0 bg-muted z-20 border-r border-border">
-                           <div className="flex items-center space-x-2">
-                               {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                               <span className="font-semibold text-primary">{issuer}</span>
-                             </div>
-                          </TableCell>
+                           <TableCell className="sticky left-0 bg-muted z-20 border-r border-border">
+                            <div className="flex items-center space-x-2">
+                                {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                <span className="font-semibold text-primary">{issuer}</span>
+                                {issuerHasNearMaturity(issuer) && (
+                                  <UITooltip>
+                                    <TooltipTrigger asChild>
+                                      <Clock className="w-4 h-4 text-warning animate-pulse" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Has bonds maturing within 30 days</p>
+                                    </TooltipContent>
+                                  </UITooltip>
+                                )}
+                              </div>
+                           </TableCell>
                            <TableCell className="text-right font-semibold text-primary">
                               {formatCurrency(issuerTotals[issuer])}
                             </TableCell>
@@ -519,12 +542,22 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                             className="border-border bg-background/50 hover:bg-muted/50 cursor-pointer transition-colors"
                             onClick={() => handleBondClick(bondName, issuer)}
                           >
-                            <TableCell className="sticky left-0 bg-background z-20 pl-8 border-r border-border">
-                              <div className="flex items-center space-x-2">
-                                <Calendar className="w-3 h-3 text-muted-foreground" />
-                                <span className="text-sm hover:text-primary transition-colors">{bondName}</span>
-                              </div>
-                            </TableCell>
+                             <TableCell className="sticky left-0 bg-background z-20 pl-8 border-r border-border">
+                               <div className="flex items-center space-x-2">
+                                 <Calendar className="w-3 h-3 text-muted-foreground" />
+                                 <span className="text-sm hover:text-primary transition-colors">{bondName}</span>
+                                 {filteredData.some(bond => bond.bondName === bondName && bond.bondIssuer === issuer && isNearMaturity(bond.maturityDate)) && (
+                                   <UITooltip>
+                                     <TooltipTrigger asChild>
+                                       <Clock className="w-4 h-4 text-warning animate-pulse" />
+                                     </TooltipTrigger>
+                                     <TooltipContent>
+                                       <p>Matures within 30 days</p>
+                                     </TooltipContent>
+                                   </UITooltip>
+                                 )}
+                               </div>
+                             </TableCell>
                               <TableCell className="text-right text-sm">
                                 {formatCurrency(Object.values(timeData).reduce((sum, amount) => sum + amount, 0))}
                               </TableCell>

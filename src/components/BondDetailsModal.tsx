@@ -341,7 +341,7 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
                   {repaymentSchedule.map((entry, index) => {
                     const hasBothPayments = entry.principalPayment > 0 && entry.interestPayment > 0;
                     return (
-                      <TableRow key={index} className={`border-border ${hasBothPayments ? 'bg-muted/60' : ''}`}>
+                      <TableRow key={index} className={`border-border ${hasBothPayments ? 'bg-primary/10 border-primary/20' : ''}`}>
                         <TableCell className="font-medium">{entry.date}</TableCell>
                         <TableCell className="text-right">{formatCurrency(entry.principalPayment)}</TableCell>
                         <TableCell className="text-right text-success">{formatCurrency(entry.interestPayment)}</TableCell>
