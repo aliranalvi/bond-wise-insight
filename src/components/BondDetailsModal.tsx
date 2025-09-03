@@ -50,6 +50,7 @@ interface BondDetailsModalProps {
   bondName: string;
   issuer: string;
   repaymentData: RepaymentData[];
+  allBondData: BondData[]; // Add this to access all investment data
 }
 
 export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
@@ -58,7 +59,8 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
   bondData,
   bondName,
   issuer,
-  repaymentData
+  repaymentData,
+  allBondData
 }) => {
   const formatCurrency = (amount: number): string => {
     return `₹${amount.toLocaleString('en-IN', { 
@@ -80,9 +82,13 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
     entry.bondName === bondName && entry.isin === bondData?.isin
   );
   
-  console.log('Bond name:', bondName, 'Bond ISIN:', bondData?.isin);
-  console.log('All repayment data:', repaymentData);
-  console.log('Filtered repayment data for this bond:', bondRepaymentData);
+  // Get all investment entries for this bond series (bondName + ISIN) to calculate total units and investment
+  const allInvestmentEntries = allBondData.filter(bond => 
+    bond.bondName === bondName && bond.isin === bondData?.isin
+  );
+  
+  const totalUnits = allInvestmentEntries.reduce((sum, bond) => sum + bond.units, 0);
+  const totalInvestment = allInvestmentEntries.reduce((sum, bond) => sum + bond.investedAmount, 0);
 
   // Calculate actual payments from repayment data
   const actualPrincipalRepaid = bondRepaymentData.reduce((sum, entry) => sum + entry.principalRepaid, 0);
@@ -109,17 +115,17 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
       const dateB = new Date(parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
       return dateA.getTime() - dateB.getTime();
     }).map((entry, index, array) => {
-      // Calculate principal balance based on cumulative principal repaid
-      const cumulativePrincipalRepaid = array.slice(0, index + 1).reduce((sum, e) => sum + e.principalPayment, 0);
-      return {
-        ...entry,
-        principalBalance: Math.max(0, bondData!.investedAmount - cumulativePrincipalRepaid)
-      };
+        // Calculate principal balance based on cumulative principal repaid
+        const cumulativePrincipalRepaid = array.slice(0, index + 1).reduce((sum, e) => sum + e.principalPayment, 0);
+        return {
+          ...entry,
+          principalBalance: Math.max(0, totalInvestment - cumulativePrincipalRepaid)
+        };
     });
   };
 
   const repaymentSchedule = generateRepaymentSchedule();
-  const principalRemaining = bondData ? bondData.investedAmount - actualPrincipalRepaid : 0;
+  const principalRemaining = totalInvestment - actualPrincipalRepaid;
 
   if (!bondData) return null;
 
@@ -156,8 +162,8 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
                 </Tooltip>
               </CardHeader>
               <CardContent>
-                <p className="text-xl font-bold text-primary">{formatCurrency(bondData.investedAmount)}</p>
-                <p className="text-xs text-muted-foreground">{bondData.units.toLocaleString()} units</p>
+                <p className="text-xl font-bold text-primary">{formatCurrency(totalInvestment)}</p>
+                <p className="text-xs text-muted-foreground">{totalUnits.toLocaleString()} units</p>
               </CardContent>
             </Card>
 

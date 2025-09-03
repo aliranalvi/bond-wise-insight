@@ -495,9 +495,9 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                              <div className="flex items-center space-x-2">
                                  {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                                  <span className="font-semibold text-primary">{issuer}</span>
-                                 <Badge variant="secondary" className="bg-success-glow text-success text-xs ml-2">
-                                   {uniqueBondSeriesCount} series
-                                 </Badge>
+                                  <Badge variant="secondary" className="bg-success-glow text-success text-xs ml-2">
+                                    {uniqueBondSeriesCount}
+                                  </Badge>
                                  {issuerHasNearMaturity(issuer) && (
                                    <UITooltip>
                                      <TooltipTrigger asChild>
@@ -513,13 +513,28 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                            <TableCell className="text-right font-semibold text-primary">
                               {formatCurrency(issuerTotals[issuer])}
                             </TableCell>
-                            <TableCell className="text-right font-semibold text-primary">
-                               {formatCurrency(filteredData.filter(bond => bond.bondIssuer === issuer).reduce((sum, bond) => {
-                                 const bondRepayments = repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin);
-                                 const principalRepaid = bondRepayments.reduce((pSum, r) => pSum + r.principalRepaid, 0);
-                                 return sum + Math.max(0, bond.investedAmount - principalRepaid);
-                               }, 0))}
-                             </TableCell>
+                             <TableCell className="text-right font-semibold text-primary">
+                                {(() => {
+                                  // Group bonds by bondName + ISIN to handle multiple entries for same series
+                                  const bondSeries = new Map<string, { totalInvestment: number; repayments: RepaymentData[] }>();
+                                  
+                                  filteredData.filter(bond => bond.bondIssuer === issuer).forEach(bond => {
+                                    const bondKey = `${bond.bondName}|${bond.isin}`;
+                                    if (!bondSeries.has(bondKey)) {
+                                      bondSeries.set(bondKey, { totalInvestment: 0, repayments: repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin) });
+                                    }
+                                    bondSeries.get(bondKey)!.totalInvestment += bond.investedAmount;
+                                  });
+                                  
+                                  let totalRemaining = 0;
+                                  bondSeries.forEach(({ totalInvestment, repayments }) => {
+                                    const principalRepaid = repayments.reduce((sum, r) => sum + r.principalRepaid, 0);
+                                    totalRemaining += Math.max(0, totalInvestment - principalRepaid);
+                                  });
+                                  
+                                  return formatCurrency(totalRemaining);
+                                })()}
+                              </TableCell>
                               <TableCell className="text-right font-semibold text-success">
                                 {formatCurrency(filteredData.filter(bond => bond.bondIssuer === issuer).reduce((sum, bond) => {
                                   const bondRepayments = repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin);
@@ -567,15 +582,20 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                                 {formatCurrency(Object.values(timeData).reduce((sum, amount) => sum + amount, 0))}
                               </TableCell>
                               <TableCell className="text-right text-sm">
-                                {(() => {
-                                  const bondDetails = filteredData.find(bond => bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer);
-                                  if (!bondDetails) return '-';
-                                  const bondRepayments = repaymentData.filter(r => r.bondName === bondName && r.isin === isin);
-                                  const principalRepaid = bondRepayments.reduce((sum, r) => sum + r.principalRepaid, 0);
-                                  const remaining = Math.max(0, bondDetails.investedAmount - principalRepaid);
-                                  return formatCurrency(remaining);
-                                })()}
-                              </TableCell>
+                                 {(() => {
+                                   // Aggregate all investments for this bond series (bondName + ISIN)
+                                   const bondInvestments = filteredData.filter(bond => 
+                                     bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer
+                                   );
+                                   if (bondInvestments.length === 0) return '-';
+                                   
+                                   const totalInvestment = bondInvestments.reduce((sum, bond) => sum + bond.investedAmount, 0);
+                                   const bondRepayments = repaymentData.filter(r => r.bondName === bondName && r.isin === isin);
+                                   const principalRepaid = bondRepayments.reduce((sum, r) => sum + r.principalRepaid, 0);
+                                   const remaining = Math.max(0, totalInvestment - principalRepaid);
+                                   return formatCurrency(remaining);
+                                 })()}
+                               </TableCell>
                                <TableCell className="text-right text-sm text-success">
                                  {(() => {
                                    const bondDetails = filteredData.find(bond => bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer);  
@@ -605,13 +625,28 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                       <TableCell className="text-right font-bold text-primary">
                         {formatCurrency(Object.values(issuerTotals).reduce((sum, amount) => sum + amount, 0))}
                       </TableCell>
-                       <TableCell className="text-right font-bold text-primary">
-                         {formatCurrency(filteredData.reduce((sum, bond) => {
-                           const bondRepayments = repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin);
-                           const principalRepaid = bondRepayments.reduce((pSum, r) => pSum + r.principalRepaid, 0);
-                           return sum + Math.max(0, bond.investedAmount - principalRepaid);
-                         }, 0))}
-                       </TableCell>
+                        <TableCell className="text-right font-bold text-primary">
+                          {(() => {
+                            // Group all bonds by bondName + ISIN to handle multiple entries for same series
+                            const bondSeries = new Map<string, { totalInvestment: number; repayments: RepaymentData[] }>();
+                            
+                            filteredData.forEach(bond => {
+                              const bondKey = `${bond.bondName}|${bond.isin}`;
+                              if (!bondSeries.has(bondKey)) {
+                                bondSeries.set(bondKey, { totalInvestment: 0, repayments: repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin) });
+                              }
+                              bondSeries.get(bondKey)!.totalInvestment += bond.investedAmount;
+                            });
+                            
+                            let totalRemaining = 0;
+                            bondSeries.forEach(({ totalInvestment, repayments }) => {
+                              const principalRepaid = repayments.reduce((sum, r) => sum + r.principalRepaid, 0);
+                              totalRemaining += Math.max(0, totalInvestment - principalRepaid);
+                            });
+                            
+                            return formatCurrency(totalRemaining);
+                          })()}
+                        </TableCell>
                         <TableCell className="text-right font-bold text-success">
                           {formatCurrency(filteredData.reduce((sum, bond) => {
                             const bondRepayments = repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin);
@@ -645,6 +680,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           bondName={selectedBond?.bondName || ''}
           issuer={selectedBond?.issuer || ''}
           repaymentData={repaymentData}
+          allBondData={filteredData}
         />
       </CardContent>
     </Card>
