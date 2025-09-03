@@ -588,7 +588,16 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                                   return formatCurrency(interestRepaid);
                                 })()}
                               </TableCell>
-                              <TableCell className="text-center text-sm">-</TableCell>
+                               <TableCell className="text-center text-sm">
+                                 {(() => {
+                                   const bondDetails = filteredData.find(bond => bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer);  
+                                   return bondDetails ? (
+                                     <Badge variant="outline" className="text-xs">
+                                       {bondDetails.units.toLocaleString()}
+                                     </Badge>
+                                   ) : '-';
+                                 })()}
+                               </TableCell>
                              {allTimePeriods.map(period => (
                                <TableCell key={period} className="text-right text-sm">
                                  {timeData[period] ? formatCurrency(timeData[period]) : '-'}

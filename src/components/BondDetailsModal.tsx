@@ -75,9 +75,9 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
     });
   };
 
-  // Filter repayment data for this specific bond
+  // Filter repayment data for this specific bond using Bond Name + ISIN combination
   const bondRepaymentData = repaymentData.filter(entry => 
-    entry.bondName === bondName || entry.isin === bondData?.isin
+    entry.bondName === bondName && entry.isin === bondData?.isin
   );
   
   console.log('Bond name:', bondName, 'Bond ISIN:', bondData?.isin);
@@ -157,7 +157,7 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
               </CardHeader>
               <CardContent>
                 <p className="text-xl font-bold text-primary">{formatCurrency(bondData.investedAmount)}</p>
-                <p className="text-xs text-muted-foreground">{bondData.units} units</p>
+                <p className="text-xs text-muted-foreground">{bondData.units.toLocaleString()} units</p>
               </CardContent>
             </Card>
 
