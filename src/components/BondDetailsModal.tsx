@@ -142,7 +142,7 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
     const expectedMonths: Date[] = [];
     const currentMonth = new Date(startDate);
     
-    while (currentMonth <= endDate) {
+    while (currentMonth < endDate) {
       expectedMonths.push(new Date(currentMonth));
       currentMonth.setMonth(currentMonth.getMonth() + 1);
     }
