@@ -5,7 +5,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ChevronDown, ChevronRight, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Clock, AlertTriangle } from 'lucide-react';
+import { ChevronDown, ChevronRight, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Clock, AlertTriangle, Settings } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { BondDetailsModal } from './BondDetailsModal';
 
 interface BondData {
@@ -65,6 +68,8 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
   const [sortField, setSortField] = useState<SortField>('issuer');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [selectedBond, setSelectedBond] = useState<{ bondData: BondData | null; bondName: string; issuer: string } | null>(null);
+  const [showMaturityIndicators, setShowMaturityIndicators] = useState<boolean>(true);
+  const [showMissedPaymentIndicators, setShowMissedPaymentIndicators] = useState<boolean>(false);
   const tableRef = useRef<HTMLDivElement>(null);
 
   // Reset scroll to top when duration filter or view changes
@@ -428,19 +433,47 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
               </div>
             </div>
             
-            <TooltipProvider>
-              <UITooltip>
-                <TooltipTrigger asChild>
-                  <div className="bg-primary-glow/20 px-3 py-1 rounded-lg cursor-help">
-                    <span className="text-sm text-muted-foreground mr-2">Avg XIRR:</span>
-                    <span className="font-semibold text-primary">{avgXirr.toFixed(2)}%</span>
+            <div className="flex items-center gap-2">
+              <div className="bg-primary-glow/20 px-3 py-1 rounded-lg">
+                <span className="text-sm text-muted-foreground mr-2">Avg XIRR:</span>
+                <span className="font-semibold text-primary">{avgXirr.toFixed(2)}%</span>
+              </div>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="space-y-4">
+                    <h4 className="font-medium leading-none">Table Settings</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="maturity-indicators" className="text-sm">
+                          Maturity Indicators
+                        </Label>
+                        <Switch
+                          id="maturity-indicators"
+                          checked={showMaturityIndicators}
+                          onCheckedChange={setShowMaturityIndicators}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="missed-payment-indicators" className="text-sm">
+                          Missed Interest Payments
+                        </Label>
+                        <Switch
+                          id="missed-payment-indicators"
+                          checked={showMissedPaymentIndicators}
+                          onCheckedChange={setShowMissedPaymentIndicators}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Average XIRR of bonds shown in the current table view</p>
-                </TooltipContent>
-              </UITooltip>
-            </TooltipProvider>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -502,79 +535,37 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
               <Table>
                 <TableHeader className="sticky top-0 z-30 bg-muted">
                   <TableRow className="border-border bg-muted">
-                    <UITooltip>
-                      <TooltipTrigger asChild>
-                        <TableHead 
-                          className="font-semibold sticky left-0 top-0 bg-muted z-40 min-w-48 border-r border-border cursor-pointer hover:bg-muted/80"
-                          onClick={() => handleSort('issuer')}
-                        >
-                          <div className="flex items-center space-x-2">
-                            <span>Bond Issuer</span>
-                            {sortField === 'issuer' && (
-                              sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                            )}
-                          </div>
-                        </TableHead>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Name of the organization that issued the bond</p>
-                      </TooltipContent>
-                    </UITooltip>
-                    <UITooltip>
-                      <TooltipTrigger asChild>
-                        <TableHead className="font-semibold text-center bg-muted border-r border-border min-w-12">
-                          #
-                        </TableHead>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Number of unique bond series from this issuer</p>
-                      </TooltipContent>
-                    </UITooltip>
-                    <UITooltip>
-                      <TooltipTrigger asChild>
-                        <TableHead 
-                          className="font-semibold text-right bg-muted border-r border-border cursor-pointer hover:bg-muted/80"
-                          onClick={() => handleSort('investment')}
-                        >
-                          <div className="flex items-center justify-end space-x-2">
-                            <span>Investment</span>
-                            {sortField === 'investment' && (
-                              sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                            )}
-                          </div>
-                        </TableHead>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Total amount invested in bonds from this issuer</p>
-                      </TooltipContent>
-                    </UITooltip>
-                     <UITooltip>
-                       <TooltipTrigger asChild>
-                         <TableHead className="font-semibold text-right bg-muted border-r border-border min-w-32">Principal Remaining</TableHead>
-                       </TooltipTrigger>
-                       <TooltipContent>
-                         <p>Outstanding principal amount yet to be repaid</p>
-                       </TooltipContent>
-                     </UITooltip>
-                     <UITooltip>
-                       <TooltipTrigger asChild>
-                         <TableHead className="font-semibold text-right bg-muted border-r border-border min-w-32">Interest Paid</TableHead>
-                       </TooltipTrigger>
-                       <TooltipContent>
-                         <p>Total interest received after tax deduction</p>
-                       </TooltipContent>
-                     </UITooltip>
+                    <TableHead 
+                      className="font-semibold sticky left-0 top-0 bg-muted z-40 min-w-48 border-r border-border cursor-pointer hover:bg-muted/80"
+                      onClick={() => handleSort('issuer')}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span>Bond Issuer</span>
+                        {sortField === 'issuer' && (
+                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="font-semibold text-center bg-muted border-r border-border min-w-12">
+                      #
+                    </TableHead>
+                    <TableHead 
+                      className="font-semibold text-right bg-muted border-r border-border cursor-pointer hover:bg-muted/80"
+                      onClick={() => handleSort('investment')}
+                    >
+                      <div className="flex items-center justify-end space-x-2">
+                        <span>Investment</span>
+                        {sortField === 'investment' && (
+                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="font-semibold text-right bg-primary/5 border-r border-border min-w-32">Principal Remaining</TableHead>
+                    <TableHead className="font-semibold text-right bg-success/5 border-r border-border min-w-32">Interest Paid</TableHead>
                     {allTimePeriods.map(period => (
-                      <UITooltip key={period}>
-                        <TooltipTrigger asChild>
-                          <TableHead className="font-semibold text-right min-w-24 bg-muted">
-                            {period}
-                          </TableHead>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Investment amount for {period}</p>
-                        </TooltipContent>
-                      </UITooltip>
+                      <TableHead key={period} className="font-semibold text-right min-w-24 bg-muted">
+                        {period}
+                      </TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
@@ -598,30 +589,30 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                         {/* Issuer Row */}
                         <TableRow className="border-border bg-muted/30 hover:bg-muted/50 cursor-pointer" onClick={() => toggleIssuer(issuer)}>
                            <TableCell className="sticky left-0 bg-muted z-20 border-r border-border">
-                              <div className="flex items-center space-x-2">
-                                  {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                  <span className="font-semibold text-primary">{issuer}</span>
-                                  {issuerHasNearMaturity(issuer) && (
-                                    <UITooltip>
-                                      <TooltipTrigger asChild>
-                                        <Clock className="w-4 h-4 text-warning animate-pulse" />
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Has bonds maturing within 30 days</p>
-                                      </TooltipContent>
-                                    </UITooltip>
-                                  )}
-                                  {issuerHasMissedPayments(issuer).length > 0 && (
-                                    <UITooltip>
-                                      <TooltipTrigger asChild>
-                                        <AlertTriangle className="w-4 h-4 text-destructive" />
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Interest payment missed for {issuerHasMissedPayments(issuer).length} months</p>
-                                      </TooltipContent>
-                                    </UITooltip>
-                                  )}
-                                </div>
+                               <div className="flex items-center space-x-2">
+                                   {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                   <span className="font-semibold text-primary">{issuer}</span>
+                                   {showMaturityIndicators && issuerHasNearMaturity(issuer) && (
+                                     <UITooltip>
+                                       <TooltipTrigger asChild>
+                                         <Clock className="w-4 h-4 text-warning animate-pulse" />
+                                       </TooltipTrigger>
+                                       <TooltipContent>
+                                         <p>Has bonds maturing within 30 days</p>
+                                       </TooltipContent>
+                                     </UITooltip>
+                                   )}
+                                   {showMissedPaymentIndicators && issuerHasMissedPayments(issuer).length > 0 && (
+                                     <UITooltip>
+                                       <TooltipTrigger asChild>
+                                         <AlertTriangle className="w-4 h-4 text-destructive" />
+                                       </TooltipTrigger>
+                                       <TooltipContent>
+                                         <p>Interest payment missed for {issuerHasMissedPayments(issuer).length} months</p>
+                                       </TooltipContent>
+                                     </UITooltip>
+                                   )}
+                                 </div>
                            </TableCell>
                            <TableCell className="text-center font-semibold">
                              {uniqueBondSeriesCount}
@@ -629,29 +620,29 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                            <TableCell className="text-right font-semibold text-primary">
                               {formatCurrency(issuerTotals[issuer])}
                             </TableCell>
-                             <TableCell className="text-right font-semibold text-primary">
-                                {(() => {
-                                  // Group bonds by bondName + ISIN to handle multiple entries for same series
-                                  const bondSeries = new Map<string, { totalInvestment: number; repayments: RepaymentData[] }>();
-                                  
-                                  filteredData.filter(bond => bond.bondIssuer === issuer).forEach(bond => {
-                                    const bondKey = `${bond.bondName}|${bond.isin}`;
-                                    if (!bondSeries.has(bondKey)) {
-                                      bondSeries.set(bondKey, { totalInvestment: 0, repayments: repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin) });
-                                    }
-                                    bondSeries.get(bondKey)!.totalInvestment += bond.investedAmount;
-                                  });
-                                  
-                                  let totalRemaining = 0;
-                                  bondSeries.forEach(({ totalInvestment, repayments }) => {
-                                    const principalRepaid = repayments.reduce((sum, r) => sum + r.principalRepaid, 0);
-                                    totalRemaining += Math.max(0, totalInvestment - principalRepaid);
-                                  });
-                                  
-                                  return formatCurrency(totalRemaining);
-                                })()}
-                              </TableCell>
-                              <TableCell className="text-right font-semibold text-success">
+                              <TableCell className="text-right font-semibold text-primary bg-primary/5">
+                                 {(() => {
+                                   // Group bonds by bondName + ISIN to handle multiple entries for same series
+                                   const bondSeries = new Map<string, { totalInvestment: number; repayments: RepaymentData[] }>();
+                                   
+                                   filteredData.filter(bond => bond.bondIssuer === issuer).forEach(bond => {
+                                     const bondKey = `${bond.bondName}|${bond.isin}`;
+                                     if (!bondSeries.has(bondKey)) {
+                                       bondSeries.set(bondKey, { totalInvestment: 0, repayments: repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin) });
+                                     }
+                                     bondSeries.get(bondKey)!.totalInvestment += bond.investedAmount;
+                                   });
+                                   
+                                   let totalRemaining = 0;
+                                   bondSeries.forEach(({ totalInvestment, repayments }) => {
+                                     const principalRepaid = repayments.reduce((sum, r) => sum + r.principalRepaid, 0);
+                                     totalRemaining += Math.max(0, totalInvestment - principalRepaid);
+                                   });
+                                   
+                                   return formatCurrency(totalRemaining);
+                                 })()}
+                               </TableCell>
+                               <TableCell className="text-right font-semibold text-success bg-success/5">
                                 {(() => {
                                   // Group bonds by bondName + ISIN to get unique bond series for this issuer
                                   const bondSeries = new Map<string, RepaymentData[]>();
@@ -693,30 +684,30 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                             onClick={() => handleBondClick(bondKey, issuer)}
                           >
                              <TableCell className="sticky left-0 bg-background z-20 pl-8 border-r border-border">
-                                <div className="flex items-center space-x-2">
-                                  <Calendar className="w-3 h-3 text-muted-foreground" />
-                                  <span className="text-sm hover:text-primary transition-colors">{bondName}</span>
-                                  {filteredData.some(bond => bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer && isNearMaturity(bond.maturityDate)) && (
-                                    <UITooltip>
-                                      <TooltipTrigger asChild>
-                                        <Clock className="w-4 h-4 text-warning animate-pulse" />
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Matures within 30 days</p>
-                                      </TooltipContent>
-                                    </UITooltip>
-                                  )}
-                                  {hasMissedInterestPayments(bondKey, issuer).length > 0 && (
-                                    <UITooltip>
-                                      <TooltipTrigger asChild>
-                                        <AlertTriangle className="w-4 h-4 text-destructive" />
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Interest payment missed for {hasMissedInterestPayments(bondKey, issuer).length} months</p>
-                                      </TooltipContent>
-                                    </UITooltip>
-                                  )}
-                                </div>
+                                 <div className="flex items-center space-x-2">
+                                   <Calendar className="w-3 h-3 text-muted-foreground" />
+                                   <span className="text-sm hover:text-primary transition-colors">{bondName}</span>
+                                   {showMaturityIndicators && filteredData.some(bond => bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer && isNearMaturity(bond.maturityDate)) && (
+                                     <UITooltip>
+                                       <TooltipTrigger asChild>
+                                         <Clock className="w-4 h-4 text-warning animate-pulse" />
+                                       </TooltipTrigger>
+                                       <TooltipContent>
+                                         <p>Matures within 30 days</p>
+                                       </TooltipContent>
+                                     </UITooltip>
+                                   )}
+                                   {showMissedPaymentIndicators && hasMissedInterestPayments(bondKey, issuer).length > 0 && (
+                                     <UITooltip>
+                                       <TooltipTrigger asChild>
+                                         <AlertTriangle className="w-4 h-4 text-destructive" />
+                                       </TooltipTrigger>
+                                       <TooltipContent>
+                                         <p>Interest payment missed for {hasMissedInterestPayments(bondKey, issuer).length} months</p>
+                                       </TooltipContent>
+                                     </UITooltip>
+                                   )}
+                                 </div>
                              </TableCell>
                              <TableCell className="text-center text-sm">
                                -
@@ -724,22 +715,22 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                               <TableCell className="text-right text-sm">
                                 {formatCurrency(Object.values(timeData).reduce((sum, amount) => sum + amount, 0))}
                               </TableCell>
-                              <TableCell className="text-right text-sm">
-                                 {(() => {
-                                   // Aggregate all investments for this bond series (bondName + ISIN)
-                                   const bondInvestments = filteredData.filter(bond => 
-                                     bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer
-                                   );
-                                   if (bondInvestments.length === 0) return '-';
-                                   
-                                   const totalInvestment = bondInvestments.reduce((sum, bond) => sum + bond.investedAmount, 0);
-                                   const bondRepayments = repaymentData.filter(r => r.bondName === bondName && r.isin === isin);
-                                   const principalRepaid = bondRepayments.reduce((sum, r) => sum + r.principalRepaid, 0);
-                                   const remaining = Math.max(0, totalInvestment - principalRepaid);
-                                   return formatCurrency(remaining);
-                                 })()}
-                               </TableCell>
-                               <TableCell className="text-right text-sm text-success">
+                               <TableCell className="text-right text-sm bg-primary/5">
+                                  {(() => {
+                                    // Aggregate all investments for this bond series (bondName + ISIN)
+                                    const bondInvestments = filteredData.filter(bond => 
+                                      bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer
+                                    );
+                                    if (bondInvestments.length === 0) return '-';
+                                    
+                                    const totalInvestment = bondInvestments.reduce((sum, bond) => sum + bond.investedAmount, 0);
+                                    const bondRepayments = repaymentData.filter(r => r.bondName === bondName && r.isin === isin);
+                                    const principalRepaid = bondRepayments.reduce((sum, r) => sum + r.principalRepaid, 0);
+                                    const remaining = Math.max(0, totalInvestment - principalRepaid);
+                                    return formatCurrency(remaining);
+                                  })()}
+                                </TableCell>
+                                <TableCell className="text-right text-sm text-success bg-success/5">
                                  {(() => {
                                    const bondDetails = filteredData.find(bond => bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer);  
                                    if (!bondDetails) return '-';
@@ -771,29 +762,29 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                       <TableCell className="text-right font-bold text-primary">
                         {formatCurrency(Object.values(issuerTotals).reduce((sum, amount) => sum + amount, 0))}
                       </TableCell>
-                        <TableCell className="text-right font-bold text-primary">
-                          {(() => {
-                            // Group all bonds by bondName + ISIN to handle multiple entries for same series
-                            const bondSeries = new Map<string, { totalInvestment: number; repayments: RepaymentData[] }>();
-                            
-                            filteredData.forEach(bond => {
-                              const bondKey = `${bond.bondName}|${bond.isin}`;
-                              if (!bondSeries.has(bondKey)) {
-                                bondSeries.set(bondKey, { totalInvestment: 0, repayments: repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin) });
-                              }
-                              bondSeries.get(bondKey)!.totalInvestment += bond.investedAmount;
-                            });
-                            
-                            let totalRemaining = 0;
-                            bondSeries.forEach(({ totalInvestment, repayments }) => {
-                              const principalRepaid = repayments.reduce((sum, r) => sum + r.principalRepaid, 0);
-                              totalRemaining += Math.max(0, totalInvestment - principalRepaid);
-                            });
-                            
-                            return formatCurrency(totalRemaining);
-                          })()}
-                        </TableCell>
-                         <TableCell className="text-right font-bold text-success">
+                         <TableCell className="text-right font-bold text-primary bg-primary/5">
+                           {(() => {
+                             // Group all bonds by bondName + ISIN to handle multiple entries for same series
+                             const bondSeries = new Map<string, { totalInvestment: number; repayments: RepaymentData[] }>();
+                             
+                             filteredData.forEach(bond => {
+                               const bondKey = `${bond.bondName}|${bond.isin}`;
+                               if (!bondSeries.has(bondKey)) {
+                                 bondSeries.set(bondKey, { totalInvestment: 0, repayments: repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin) });
+                               }
+                               bondSeries.get(bondKey)!.totalInvestment += bond.investedAmount;
+                             });
+                             
+                             let totalRemaining = 0;
+                             bondSeries.forEach(({ totalInvestment, repayments }) => {
+                               const principalRepaid = repayments.reduce((sum, r) => sum + r.principalRepaid, 0);
+                               totalRemaining += Math.max(0, totalInvestment - principalRepaid);
+                             });
+                             
+                             return formatCurrency(totalRemaining);
+                           })()}
+                         </TableCell>
+                          <TableCell className="text-right font-bold text-success bg-success/5">
                            {(() => {
                              // Group all bonds by bondName + ISIN to get unique bond series
                              const bondSeries = new Map<string, RepaymentData[]>();
