@@ -137,7 +137,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
     const expectedMonths: string[] = [];
     const currentMonth = new Date(startDate);
     
-    while (currentMonth < endDate) {
+    while (currentMonth <= endDate) {
       expectedMonths.push(`${String(currentMonth.getDate()).padStart(2, '0')}/${String(currentMonth.getMonth() + 1).padStart(2, '0')}/${currentMonth.getFullYear()}`);
       currentMonth.setMonth(currentMonth.getMonth() + 1);
     }
@@ -382,7 +382,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           <div>
             <CardTitle className="text-xl font-bold">Active Investment Analysis</CardTitle>
             <CardDescription>
-              (excludes matured bonds and sell transactions)
+              (excludes matured bonds)
             </CardDescription>
           </div>
           
