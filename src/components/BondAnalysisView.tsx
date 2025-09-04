@@ -445,7 +445,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                     <Settings className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80">
+                <PopoverContent className="w-64">
                   <div className="space-y-4">
                     <h4 className="font-medium leading-none">Table Settings</h4>
                     <div className="space-y-3">
@@ -549,6 +549,8 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                     <TableHead className="font-semibold text-center bg-muted border-r border-border min-w-12">
                       #
                     </TableHead>
+                    <TableHead className="font-semibold text-right bg-primary/5 border-r border-border min-w-32">Principal Remaining</TableHead>
+                    <TableHead className="font-semibold text-right bg-success/5 border-r border-border min-w-32">Interest Paid</TableHead>
                     <TableHead 
                       className="font-semibold text-right bg-muted border-r border-border cursor-pointer hover:bg-muted/80"
                       onClick={() => handleSort('investment')}
@@ -560,8 +562,6 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                         )}
                       </div>
                     </TableHead>
-                    <TableHead className="font-semibold text-right bg-primary/5 border-r border-border min-w-32">Principal Remaining</TableHead>
-                    <TableHead className="font-semibold text-right bg-success/5 border-r border-border min-w-32">Interest Paid</TableHead>
                     {allTimePeriods.map(period => (
                       <TableHead key={period} className="font-semibold text-right min-w-24 bg-muted">
                         {period}
@@ -617,51 +617,51 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                            <TableCell className="text-center font-semibold">
                              {uniqueBondSeriesCount}
                            </TableCell>
-                           <TableCell className="text-right font-semibold text-primary">
-                              {formatCurrency(issuerTotals[issuer])}
-                            </TableCell>
-                              <TableCell className="text-right font-semibold text-primary bg-primary/5">
+                               <TableCell className="text-right font-semibold text-primary bg-primary/5">
+                                  {(() => {
+                                    // Group bonds by bondName + ISIN to handle multiple entries for same series
+                                    const bondSeries = new Map<string, { totalInvestment: number; repayments: RepaymentData[] }>();
+                                    
+                                    filteredData.filter(bond => bond.bondIssuer === issuer).forEach(bond => {
+                                      const bondKey = `${bond.bondName}|${bond.isin}`;
+                                      if (!bondSeries.has(bondKey)) {
+                                        bondSeries.set(bondKey, { totalInvestment: 0, repayments: repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin) });
+                                      }
+                                      bondSeries.get(bondKey)!.totalInvestment += bond.investedAmount;
+                                    });
+                                    
+                                    let totalRemaining = 0;
+                                    bondSeries.forEach(({ totalInvestment, repayments }) => {
+                                      const principalRepaid = repayments.reduce((sum, r) => sum + r.principalRepaid, 0);
+                                      totalRemaining += Math.max(0, totalInvestment - principalRepaid);
+                                    });
+                                    
+                                    return formatCurrency(totalRemaining);
+                                  })()}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-success bg-success/5">
                                  {(() => {
-                                   // Group bonds by bondName + ISIN to handle multiple entries for same series
-                                   const bondSeries = new Map<string, { totalInvestment: number; repayments: RepaymentData[] }>();
+                                   // Group bonds by bondName + ISIN to get unique bond series for this issuer
+                                   const bondSeries = new Map<string, RepaymentData[]>();
                                    
                                    filteredData.filter(bond => bond.bondIssuer === issuer).forEach(bond => {
                                      const bondKey = `${bond.bondName}|${bond.isin}`;
                                      if (!bondSeries.has(bondKey)) {
-                                       bondSeries.set(bondKey, { totalInvestment: 0, repayments: repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin) });
+                                       bondSeries.set(bondKey, repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin));
                                      }
-                                     bondSeries.get(bondKey)!.totalInvestment += bond.investedAmount;
                                    });
                                    
-                                   let totalRemaining = 0;
-                                   bondSeries.forEach(({ totalInvestment, repayments }) => {
-                                     const principalRepaid = repayments.reduce((sum, r) => sum + r.principalRepaid, 0);
-                                     totalRemaining += Math.max(0, totalInvestment - principalRepaid);
+                                   let totalInterestPaid = 0;
+                                   bondSeries.forEach((repayments) => {
+                                     totalInterestPaid += repayments.reduce((sum, r) => sum + r.interestPaidAfterTDS, 0);
                                    });
                                    
-                                   return formatCurrency(totalRemaining);
+                                   return formatCurrency(totalInterestPaid);
                                  })()}
                                </TableCell>
-                               <TableCell className="text-right font-semibold text-success bg-success/5">
-                                {(() => {
-                                  // Group bonds by bondName + ISIN to get unique bond series for this issuer
-                                  const bondSeries = new Map<string, RepaymentData[]>();
-                                  
-                                  filteredData.filter(bond => bond.bondIssuer === issuer).forEach(bond => {
-                                    const bondKey = `${bond.bondName}|${bond.isin}`;
-                                    if (!bondSeries.has(bondKey)) {
-                                      bondSeries.set(bondKey, repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin));
-                                    }
-                                  });
-                                  
-                                  let totalInterestPaid = 0;
-                                  bondSeries.forEach((repayments) => {
-                                    totalInterestPaid += repayments.reduce((sum, r) => sum + r.interestPaidAfterTDS, 0);
-                                  });
-                                  
-                                  return formatCurrency(totalInterestPaid);
-                                })()}
-                              </TableCell>
+                           <TableCell className="text-right font-semibold text-primary">
+                               {formatCurrency(issuerTotals[issuer])}
+                             </TableCell>
                            {allTimePeriods.map(period => {
                             const total = Object.values(bonds).reduce((sum, timeData) => {
                               return sum + (timeData[period] || 0);
@@ -712,32 +712,32 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                              <TableCell className="text-center text-sm">
                                -
                              </TableCell>
-                              <TableCell className="text-right text-sm">
-                                {formatCurrency(Object.values(timeData).reduce((sum, amount) => sum + amount, 0))}
-                              </TableCell>
-                               <TableCell className="text-right text-sm bg-primary/5">
+                                <TableCell className="text-right text-sm bg-primary/5">
+                                   {(() => {
+                                     // Aggregate all investments for this bond series (bondName + ISIN)
+                                     const bondInvestments = filteredData.filter(bond => 
+                                       bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer
+                                     );
+                                     if (bondInvestments.length === 0) return '-';
+                                     
+                                     const totalInvestment = bondInvestments.reduce((sum, bond) => sum + bond.investedAmount, 0);
+                                     const bondRepayments = repaymentData.filter(r => r.bondName === bondName && r.isin === isin);
+                                     const principalRepaid = bondRepayments.reduce((sum, r) => sum + r.principalRepaid, 0);
+                                     const remaining = Math.max(0, totalInvestment - principalRepaid);
+                                     return formatCurrency(remaining);
+                                   })()}
+                                 </TableCell>
+                                 <TableCell className="text-right text-sm text-success bg-success/5">
                                   {(() => {
-                                    // Aggregate all investments for this bond series (bondName + ISIN)
-                                    const bondInvestments = filteredData.filter(bond => 
-                                      bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer
-                                    );
-                                    if (bondInvestments.length === 0) return '-';
-                                    
-                                    const totalInvestment = bondInvestments.reduce((sum, bond) => sum + bond.investedAmount, 0);
+                                    const bondDetails = filteredData.find(bond => bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer);  
+                                    if (!bondDetails) return '-';
                                     const bondRepayments = repaymentData.filter(r => r.bondName === bondName && r.isin === isin);
-                                    const principalRepaid = bondRepayments.reduce((sum, r) => sum + r.principalRepaid, 0);
-                                    const remaining = Math.max(0, totalInvestment - principalRepaid);
-                                    return formatCurrency(remaining);
+                                    const interestRepaid = bondRepayments.reduce((sum, r) => sum + r.interestPaidAfterTDS, 0);
+                                    return formatCurrency(interestRepaid);
                                   })()}
                                 </TableCell>
-                                <TableCell className="text-right text-sm text-success bg-success/5">
-                                 {(() => {
-                                   const bondDetails = filteredData.find(bond => bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer);  
-                                   if (!bondDetails) return '-';
-                                   const bondRepayments = repaymentData.filter(r => r.bondName === bondName && r.isin === isin);
-                                   const interestRepaid = bondRepayments.reduce((sum, r) => sum + r.interestPaidAfterTDS, 0);
-                                   return formatCurrency(interestRepaid);
-                                 })()}
+                               <TableCell className="text-right text-sm">
+                                 {formatCurrency(Object.values(timeData).reduce((sum, amount) => sum + amount, 0))}
                                </TableCell>
                              {allTimePeriods.map(period => (
                                <TableCell key={period} className="text-right text-sm">
@@ -759,51 +759,51 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                       <TableCell className="text-center font-bold">
                         -
                       </TableCell>
-                      <TableCell className="text-right font-bold text-primary">
-                        {formatCurrency(Object.values(issuerTotals).reduce((sum, amount) => sum + amount, 0))}
-                      </TableCell>
-                         <TableCell className="text-right font-bold text-primary bg-primary/5">
-                           {(() => {
-                             // Group all bonds by bondName + ISIN to handle multiple entries for same series
-                             const bondSeries = new Map<string, { totalInvestment: number; repayments: RepaymentData[] }>();
-                             
-                             filteredData.forEach(bond => {
-                               const bondKey = `${bond.bondName}|${bond.isin}`;
-                               if (!bondSeries.has(bondKey)) {
-                                 bondSeries.set(bondKey, { totalInvestment: 0, repayments: repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin) });
-                               }
-                               bondSeries.get(bondKey)!.totalInvestment += bond.investedAmount;
-                             });
-                             
-                             let totalRemaining = 0;
-                             bondSeries.forEach(({ totalInvestment, repayments }) => {
-                               const principalRepaid = repayments.reduce((sum, r) => sum + r.principalRepaid, 0);
-                               totalRemaining += Math.max(0, totalInvestment - principalRepaid);
-                             });
-                             
-                             return formatCurrency(totalRemaining);
-                           })()}
-                         </TableCell>
-                          <TableCell className="text-right font-bold text-success bg-success/5">
-                           {(() => {
-                             // Group all bonds by bondName + ISIN to get unique bond series
-                             const bondSeries = new Map<string, RepaymentData[]>();
-                             
-                             filteredData.forEach(bond => {
-                               const bondKey = `${bond.bondName}|${bond.isin}`;
-                               if (!bondSeries.has(bondKey)) {
-                                 bondSeries.set(bondKey, repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin));
-                               }
-                             });
-                             
-                             let totalInterestPaid = 0;
-                             bondSeries.forEach((repayments) => {
-                               totalInterestPaid += repayments.reduce((sum, r) => sum + r.interestPaidAfterTDS, 0);
-                             });
-                             
-                             return formatCurrency(totalInterestPaid);
-                           })()}
-                         </TableCell>
+                          <TableCell className="text-right font-bold text-primary bg-primary/5">
+                            {(() => {
+                              // Group all bonds by bondName + ISIN to handle multiple entries for same series
+                              const bondSeries = new Map<string, { totalInvestment: number; repayments: RepaymentData[] }>();
+                              
+                              filteredData.forEach(bond => {
+                                const bondKey = `${bond.bondName}|${bond.isin}`;
+                                if (!bondSeries.has(bondKey)) {
+                                  bondSeries.set(bondKey, { totalInvestment: 0, repayments: repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin) });
+                                }
+                                bondSeries.get(bondKey)!.totalInvestment += bond.investedAmount;
+                              });
+                              
+                              let totalRemaining = 0;
+                              bondSeries.forEach(({ totalInvestment, repayments }) => {
+                                const principalRepaid = repayments.reduce((sum, r) => sum + r.principalRepaid, 0);
+                                totalRemaining += Math.max(0, totalInvestment - principalRepaid);
+                              });
+                              
+                              return formatCurrency(totalRemaining);
+                            })()}
+                          </TableCell>
+                           <TableCell className="text-right font-bold text-success bg-success/5">
+                            {(() => {
+                              // Group all bonds by bondName + ISIN to get unique bond series
+                              const bondSeries = new Map<string, RepaymentData[]>();
+                              
+                              filteredData.forEach(bond => {
+                                const bondKey = `${bond.bondName}|${bond.isin}`;
+                                if (!bondSeries.has(bondKey)) {
+                                  bondSeries.set(bondKey, repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin));
+                                }
+                              });
+                              
+                              let totalInterestPaid = 0;
+                              bondSeries.forEach((repayments) => {
+                                totalInterestPaid += repayments.reduce((sum, r) => sum + r.interestPaidAfterTDS, 0);
+                              });
+                              
+                              return formatCurrency(totalInterestPaid);
+                            })()}
+                          </TableCell>
+                       <TableCell className="text-right font-bold text-primary">
+                         {formatCurrency(Object.values(issuerTotals).reduce((sum, amount) => sum + amount, 0))}
+                       </TableCell>
                      {allTimePeriods.map(period => {
                        const periodTotal = Object.values(filteredPivotData).reduce((sum, bonds) => {
                          return sum + Object.values(bonds).reduce((bondSum, timeData) => {
