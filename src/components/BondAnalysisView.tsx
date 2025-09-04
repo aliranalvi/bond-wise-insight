@@ -152,10 +152,11 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
       return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
     });
     
-    // Find missed months
+    // Find missed months (exclude current month)
     return expectedMonths.filter(month => {
       const monthDate = new Date(month.split('/').reverse().join('-'));
-      return monthDate < currentDate && !actualPaymentMonths.some(paymentMonth => {
+      const isCurrentMonth = monthDate.getMonth() === currentDate.getMonth() && monthDate.getFullYear() === currentDate.getFullYear();
+      return monthDate < currentDate && !isCurrentMonth && !actualPaymentMonths.some(paymentMonth => {
         const paymentDate = new Date(paymentMonth.split('/').reverse().join('-'));
         return paymentDate.getMonth() === monthDate.getMonth() && paymentDate.getFullYear() === monthDate.getFullYear();
       });
@@ -501,37 +502,79 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
               <Table>
                 <TableHeader className="sticky top-0 z-30 bg-muted">
                   <TableRow className="border-border bg-muted">
-                    <TableHead 
-                      className="font-semibold sticky left-0 top-0 bg-muted z-40 min-w-48 border-r border-border cursor-pointer hover:bg-muted/80"
-                      onClick={() => handleSort('issuer')}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <span>Bond Issuer</span>
-                        {sortField === 'issuer' && (
-                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead className="font-semibold text-center bg-muted border-r border-border min-w-12">
-                      #
-                    </TableHead>
-                    <TableHead 
-                      className="font-semibold text-right bg-muted border-r border-border cursor-pointer hover:bg-muted/80"
-                      onClick={() => handleSort('investment')}
-                    >
-                      <div className="flex items-center justify-end space-x-2">
-                        <span>Investment</span>
-                        {sortField === 'investment' && (
-                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                        )}
-                      </div>
-                    </TableHead>
-                     <TableHead className="font-semibold text-right bg-muted border-r border-border min-w-32">Principal Remaining</TableHead>
-                     <TableHead className="font-semibold text-right bg-muted border-r border-border min-w-32">Interest Paid</TableHead>
+                    <UITooltip>
+                      <TooltipTrigger asChild>
+                        <TableHead 
+                          className="font-semibold sticky left-0 top-0 bg-muted z-40 min-w-48 border-r border-border cursor-pointer hover:bg-muted/80"
+                          onClick={() => handleSort('issuer')}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span>Bond Issuer</span>
+                            {sortField === 'issuer' && (
+                              sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                            )}
+                          </div>
+                        </TableHead>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Name of the organization that issued the bond</p>
+                      </TooltipContent>
+                    </UITooltip>
+                    <UITooltip>
+                      <TooltipTrigger asChild>
+                        <TableHead className="font-semibold text-center bg-muted border-r border-border min-w-12">
+                          #
+                        </TableHead>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Number of unique bond series from this issuer</p>
+                      </TooltipContent>
+                    </UITooltip>
+                    <UITooltip>
+                      <TooltipTrigger asChild>
+                        <TableHead 
+                          className="font-semibold text-right bg-muted border-r border-border cursor-pointer hover:bg-muted/80"
+                          onClick={() => handleSort('investment')}
+                        >
+                          <div className="flex items-center justify-end space-x-2">
+                            <span>Investment</span>
+                            {sortField === 'investment' && (
+                              sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                            )}
+                          </div>
+                        </TableHead>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Total amount invested in bonds from this issuer</p>
+                      </TooltipContent>
+                    </UITooltip>
+                     <UITooltip>
+                       <TooltipTrigger asChild>
+                         <TableHead className="font-semibold text-right bg-muted border-r border-border min-w-32">Principal Remaining</TableHead>
+                       </TooltipTrigger>
+                       <TooltipContent>
+                         <p>Outstanding principal amount yet to be repaid</p>
+                       </TooltipContent>
+                     </UITooltip>
+                     <UITooltip>
+                       <TooltipTrigger asChild>
+                         <TableHead className="font-semibold text-right bg-muted border-r border-border min-w-32">Interest Paid</TableHead>
+                       </TooltipTrigger>
+                       <TooltipContent>
+                         <p>Total interest received after tax deduction</p>
+                       </TooltipContent>
+                     </UITooltip>
                     {allTimePeriods.map(period => (
-                      <TableHead key={period} className="font-semibold text-right min-w-24 bg-muted">
-                        {period}
-                      </TableHead>
+                      <UITooltip key={period}>
+                        <TooltipTrigger asChild>
+                          <TableHead className="font-semibold text-right min-w-24 bg-muted">
+                            {period}
+                          </TableHead>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Investment amount for {period}</p>
+                        </TooltipContent>
+                      </UITooltip>
                     ))}
                   </TableRow>
                 </TableHeader>

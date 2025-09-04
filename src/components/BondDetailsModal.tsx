@@ -152,9 +152,10 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
       .filter(entry => entry.interestPaidBeforeTDS > 0)
       .map(entry => new Date(entry.date.split('/').reverse().join('-')));
     
-    // Find missed months
+    // Find missed months (exclude current month)
     const missedMonths = expectedMonths.filter(expectedMonth => {
-      return expectedMonth < currentDate && !actualPaymentMonths.some(paymentMonth => 
+      const isCurrentMonth = expectedMonth.getMonth() === currentDate.getMonth() && expectedMonth.getFullYear() === currentDate.getFullYear();
+      return expectedMonth < currentDate && !isCurrentMonth && !actualPaymentMonths.some(paymentMonth => 
         paymentMonth.getMonth() === expectedMonth.getMonth() && 
         paymentMonth.getFullYear() === expectedMonth.getFullYear()
       );
