@@ -447,7 +447,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                 </PopoverTrigger>
                 <PopoverContent className="w-64">
                   <div className="space-y-4">
-                    <h4 className="font-medium leading-none">Table Settings</h4>
+                    <h4 className="font-medium leading-none">Settings</h4>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <Label htmlFor="maturity-indicators" className="text-sm">
