@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ChevronDown, ChevronRight, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Clock } from 'lucide-react';
+import { ChevronDown, ChevronRight, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Clock, AlertTriangle } from 'lucide-react';
 import { BondDetailsModal } from './BondDetailsModal';
 
 interface BondData {
@@ -120,6 +120,66 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
   // Check if any bond in issuer is near maturity
   const issuerHasNearMaturity = (issuer: string): boolean => {
     return filteredData.some(bond => bond.bondIssuer === issuer && isNearMaturity(bond.maturityDate));
+  };
+
+  // Calculate missed interest payments for monthly bonds
+  const getMissedInterestMonths = (bond: BondData): string[] => {
+    if (bond.interestFrequency !== 'Monthly') return [];
+    
+    const investmentDate = new Date(bond.dateOfInvestment.split('/').reverse().join('-'));
+    const currentDate = new Date();
+    const maturityDate = new Date(bond.maturityDate.split('/').reverse().join('-'));
+    
+    // Interest payments start from the next month after investment
+    const startDate = new Date(investmentDate.getFullYear(), investmentDate.getMonth() + 1, 1);
+    const endDate = currentDate < maturityDate ? currentDate : maturityDate;
+    
+    const expectedMonths: string[] = [];
+    const currentMonth = new Date(startDate);
+    
+    while (currentMonth <= endDate) {
+      expectedMonths.push(`${String(currentMonth.getDate()).padStart(2, '0')}/${String(currentMonth.getMonth() + 1).padStart(2, '0')}/${currentMonth.getFullYear()}`);
+      currentMonth.setMonth(currentMonth.getMonth() + 1);
+    }
+    
+    // Get actual interest payment months for this bond
+    const bondRepayments = repaymentData.filter(entry => 
+      entry.bondName === bond.bondName && entry.isin === bond.isin && entry.interestPaidBeforeTDS > 0
+    );
+    
+    const actualPaymentMonths = bondRepayments.map(entry => {
+      const date = new Date(entry.date.split('/').reverse().join('-'));
+      return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+    });
+    
+    // Find missed months
+    return expectedMonths.filter(month => {
+      const monthDate = new Date(month.split('/').reverse().join('-'));
+      return monthDate < currentDate && !actualPaymentMonths.some(paymentMonth => {
+        const paymentDate = new Date(paymentMonth.split('/').reverse().join('-'));
+        return paymentDate.getMonth() === monthDate.getMonth() && paymentDate.getFullYear() === monthDate.getFullYear();
+      });
+    });
+  };
+
+  // Check if bond series has missed interest payments
+  const hasMissedInterestPayments = (bondKey: string, issuer: string): string[] => {
+    const [bondName, isin] = bondKey.split('|');
+    const bond = filteredData.find(b => b.bondName === bondName && b.isin === isin && b.bondIssuer === issuer);
+    return bond ? getMissedInterestMonths(bond) : [];
+  };
+
+  // Check if any bond in issuer has missed interest payments
+  const issuerHasMissedPayments = (issuer: string): string[] => {
+    const issuerBonds = filteredData.filter(bond => bond.bondIssuer === issuer);
+    const allMissedMonths: string[] = [];
+    
+    issuerBonds.forEach(bond => {
+      const missedMonths = getMissedInterestMonths(bond);
+      allMissedMonths.push(...missedMonths);
+    });
+    
+    return [...new Set(allMissedMonths)]; // Remove duplicates
   };
 
   const formatCurrency = (amount: number): string => {
@@ -495,20 +555,30 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                         {/* Issuer Row */}
                         <TableRow className="border-border bg-muted/30 hover:bg-muted/50 cursor-pointer" onClick={() => toggleIssuer(issuer)}>
                            <TableCell className="sticky left-0 bg-muted z-20 border-r border-border">
-                             <div className="flex items-center space-x-2">
-                                 {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                 <span className="font-semibold text-primary">{issuer}</span>
-                                 {issuerHasNearMaturity(issuer) && (
-                                   <UITooltip>
-                                     <TooltipTrigger asChild>
-                                       <Clock className="w-4 h-4 text-warning animate-pulse" />
-                                     </TooltipTrigger>
-                                     <TooltipContent>
-                                       <p>Has bonds maturing within 30 days</p>
-                                     </TooltipContent>
-                                   </UITooltip>
-                                 )}
-                               </div>
+                              <div className="flex items-center space-x-2">
+                                  {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                  <span className="font-semibold text-primary">{issuer}</span>
+                                  {issuerHasNearMaturity(issuer) && (
+                                    <UITooltip>
+                                      <TooltipTrigger asChild>
+                                        <Clock className="w-4 h-4 text-warning animate-pulse" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Has bonds maturing within 30 days</p>
+                                      </TooltipContent>
+                                    </UITooltip>
+                                  )}
+                                  {issuerHasMissedPayments(issuer).length > 0 && (
+                                    <UITooltip>
+                                      <TooltipTrigger asChild>
+                                        <AlertTriangle className="w-4 h-4 text-destructive" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Interest payment missed for {issuerHasMissedPayments(issuer).length} months</p>
+                                      </TooltipContent>
+                                    </UITooltip>
+                                  )}
+                                </div>
                            </TableCell>
                            <TableCell className="text-center font-semibold">
                              {uniqueBondSeriesCount}
@@ -580,20 +650,30 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                             onClick={() => handleBondClick(bondKey, issuer)}
                           >
                              <TableCell className="sticky left-0 bg-background z-20 pl-8 border-r border-border">
-                               <div className="flex items-center space-x-2">
-                                 <Calendar className="w-3 h-3 text-muted-foreground" />
-                                 <span className="text-sm hover:text-primary transition-colors">{bondName}</span>
-                                 {filteredData.some(bond => bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer && isNearMaturity(bond.maturityDate)) && (
-                                   <UITooltip>
-                                     <TooltipTrigger asChild>
-                                       <Clock className="w-4 h-4 text-warning animate-pulse" />
-                                     </TooltipTrigger>
-                                     <TooltipContent>
-                                       <p>Matures within 30 days</p>
-                                     </TooltipContent>
-                                   </UITooltip>
-                                 )}
-                               </div>
+                                <div className="flex items-center space-x-2">
+                                  <Calendar className="w-3 h-3 text-muted-foreground" />
+                                  <span className="text-sm hover:text-primary transition-colors">{bondName}</span>
+                                  {filteredData.some(bond => bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer && isNearMaturity(bond.maturityDate)) && (
+                                    <UITooltip>
+                                      <TooltipTrigger asChild>
+                                        <Clock className="w-4 h-4 text-warning animate-pulse" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Matures within 30 days</p>
+                                      </TooltipContent>
+                                    </UITooltip>
+                                  )}
+                                  {hasMissedInterestPayments(bondKey, issuer).length > 0 && (
+                                    <UITooltip>
+                                      <TooltipTrigger asChild>
+                                        <AlertTriangle className="w-4 h-4 text-destructive" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Interest payment missed for {hasMissedInterestPayments(bondKey, issuer).length} months</p>
+                                      </TooltipContent>
+                                    </UITooltip>
+                                  )}
+                                </div>
                              </TableCell>
                              <TableCell className="text-center text-sm">
                                -

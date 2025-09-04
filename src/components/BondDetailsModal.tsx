@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { CalendarDays, TrendingUp, Percent, Clock, Banknote, Receipt, Info } from 'lucide-react';
+import { CalendarDays, TrendingUp, Percent, Clock, Banknote, Receipt, Info, AlertTriangle } from 'lucide-react';
 
 interface BondData {
   bondName: string;
@@ -126,6 +126,46 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
 
   const repaymentSchedule = generateRepaymentSchedule();
   const principalRemaining = totalInvestment - actualPrincipalRepaid;
+
+  // Calculate missed interest payments for monthly bonds
+  const getMissedInterestMonths = (): string[] => {
+    if (!bondData || bondData.interestFrequency !== 'Monthly') return [];
+    
+    const investmentDate = new Date(bondData.dateOfInvestment.split('/').reverse().join('-'));
+    const currentDate = new Date();
+    const maturityDate = new Date(bondData.maturityDate.split('/').reverse().join('-'));
+    
+    // Interest payments start from the next month after investment
+    const startDate = new Date(investmentDate.getFullYear(), investmentDate.getMonth() + 1, 1);
+    const endDate = currentDate < maturityDate ? currentDate : maturityDate;
+    
+    const expectedMonths: Date[] = [];
+    const currentMonth = new Date(startDate);
+    
+    while (currentMonth <= endDate) {
+      expectedMonths.push(new Date(currentMonth));
+      currentMonth.setMonth(currentMonth.getMonth() + 1);
+    }
+    
+    // Get actual interest payment months for this bond
+    const actualPaymentMonths = bondRepaymentData
+      .filter(entry => entry.interestPaidBeforeTDS > 0)
+      .map(entry => new Date(entry.date.split('/').reverse().join('-')));
+    
+    // Find missed months
+    const missedMonths = expectedMonths.filter(expectedMonth => {
+      return expectedMonth < currentDate && !actualPaymentMonths.some(paymentMonth => 
+        paymentMonth.getMonth() === expectedMonth.getMonth() && 
+        paymentMonth.getFullYear() === expectedMonth.getFullYear()
+      );
+    });
+    
+    return missedMonths.map(date => 
+      date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+    );
+  };
+
+  const missedInterestMonths = getMissedInterestMonths();
 
   if (!bondData) return null;
 
@@ -315,6 +355,23 @@ export const BondDetailsModal: React.FC<BondDetailsModalProps> = ({
               </CardContent>
             </Card>
           </div>
+
+          {/* Missed Interest Payments Alert */}
+          {missedInterestMonths.length > 0 && (
+            <Card className="bg-destructive/10 border-destructive/30">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-destructive mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-destructive mb-2">Missed Interest Payments</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Interest payment missed for {missedInterestMonths.join(', ')}.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Repayment Schedule */}
           <Card className="bg-gradient-subtle border-primary/20">
