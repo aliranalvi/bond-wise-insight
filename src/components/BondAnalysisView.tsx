@@ -533,8 +533,8 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           <div className="border rounded-lg overflow-hidden">
             <div ref={tableRef} className="overflow-auto max-h-96 relative">
               <Table>
-                <TableHeader className="sticky top-0 z-30 bg-muted">
-                  <TableRow className="border-border bg-muted">
+                <TableHeader>
+                  <TableRow className="sticky top-0 z-30 bg-muted border-border">
                     <TableHead 
                       className="font-semibold sticky left-0 top-0 bg-muted z-40 min-w-48 border-r border-border cursor-pointer hover:bg-muted/80"
                       onClick={() => handleSort('issuer')}
@@ -546,13 +546,13 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                         )}
                       </div>
                     </TableHead>
-                    <TableHead className="font-semibold text-center bg-muted border-r border-border min-w-12">
+                    <TableHead className="font-semibold text-center sticky top-0 bg-muted z-30 border-r border-border min-w-12">
                       #
                     </TableHead>
-                    <TableHead className="font-semibold text-right bg-primary/5 border-r border-border min-w-32">Principal Remaining</TableHead>
-                    <TableHead className="font-semibold text-right bg-success/5 border-r border-border min-w-32">Interest Paid</TableHead>
+                    <TableHead className="font-semibold text-right sticky top-0 bg-primary/5 z-30 border-r border-border min-w-32">Principal Remaining</TableHead>
+                    <TableHead className="font-semibold text-right sticky top-0 bg-success/5 z-30 border-r border-border min-w-32">Interest Paid</TableHead>
                     <TableHead 
-                      className="font-semibold text-right bg-muted border-r border-border cursor-pointer hover:bg-muted/80"
+                      className="font-semibold text-right sticky top-0 bg-muted z-30 border-r border-border cursor-pointer hover:bg-muted/80"
                       onClick={() => handleSort('investment')}
                     >
                       <div className="flex items-center justify-end space-x-2">
@@ -563,7 +563,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                       </div>
                     </TableHead>
                     {allTimePeriods.map(period => (
-                      <TableHead key={period} className="font-semibold text-right min-w-24 bg-muted">
+                      <TableHead key={period} className="font-semibold text-right sticky top-0 bg-muted z-30 min-w-24">
                         {period}
                       </TableHead>
                     ))}
