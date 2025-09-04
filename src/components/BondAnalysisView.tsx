@@ -388,7 +388,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           <div>
             <CardTitle className="text-xl font-bold">Active Investment Analysis</CardTitle>
             <CardDescription>
-              (excludes matured bonds)
+              (excludes matured bonds and sell transactions)
             </CardDescription>
           </div>
           
