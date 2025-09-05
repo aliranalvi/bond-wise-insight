@@ -56,11 +56,13 @@ interface BondAnalysisViewProps {
 
 type DurationFilter = 'This Year' | 'Last Year' | 'All Time';
 type DurationView = 'Years' | 'Quarters' | 'Months';
+type InvestmentType = 'active' | 'matured';
 
 type SortField = 'issuer' | 'investment';
 type SortDirection = 'asc' | 'desc';
 
 export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, bondData, repaymentData }) => {
+  const [investmentType, setInvestmentType] = useState<InvestmentType>('active');
   const [durationFilter, setDurationFilter] = useState<DurationFilter>('All Time');
   const [durationView, setDurationView] = useState<DurationView>('Months');
   const [expandedIssuers, setExpandedIssuers] = useState<Set<string>>(new Set());
@@ -72,12 +74,12 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
   const [showMissedPaymentIndicators, setShowMissedPaymentIndicators] = useState<boolean>(false);
   const tableRef = useRef<HTMLDivElement>(null);
 
-  // Reset scroll to top when duration filter or view changes
+  // Reset scroll to top when duration filter, view, or investment type changes
   useEffect(() => {
     if (tableRef.current) {
       tableRef.current.scrollTop = 0;
     }
-  }, [durationFilter, durationView]);
+  }, [durationFilter, durationView, investmentType]);
 
   const toggleIssuer = (issuer: string) => {
     const newExpanded = new Set(expandedIssuers);
@@ -195,14 +197,16 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
     })}`;
   };
 
-  // Filter data based on duration filter
+  // Filter data based on duration filter and investment type
   const filteredData = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const lastYear = currentYear - 1;
 
     return bondData.filter(bond => {
-      if (bond.matured) return false; // Only active bonds
+      // Filter by investment type (active or matured)
+      if (investmentType === 'active' && bond.matured) return false;
+      if (investmentType === 'matured' && !bond.matured) return false;
       
       const investmentDate = new Date(bond.dateOfInvestment.split('/').reverse().join('-'));
       const investmentYear = investmentDate.getFullYear();
@@ -217,7 +221,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           return true;
       }
     });
-  }, [bondData, durationFilter]);
+  }, [bondData, durationFilter, investmentType]);
 
   // Generate filtered pivot data
   const filteredPivotData = useMemo(() => {
@@ -386,9 +390,11 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
       <CardHeader>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <CardTitle className="text-xl font-bold">Active Investment Analysis</CardTitle>
+            <CardTitle className="text-xl font-bold">
+              {investmentType === 'active' ? 'Active Investment Analysis' : 'Matured Investment Analysis'}
+            </CardTitle>
             <CardDescription>
-              (excludes matured bonds)
+              {investmentType === 'active' ? '(excludes matured bonds)' : '(includes matured bonds only)'}
             </CardDescription>
           </div>
           
@@ -477,6 +483,47 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           </div>
         </div>
       </CardHeader>
+      
+      {/* Investment Type Selector Cards */}
+      <div className="px-6 pb-4">
+        <div className="grid grid-cols-2 gap-4">
+          <Card 
+            className={`cursor-pointer transition-all duration-200 ${
+              investmentType === 'active' 
+                ? 'bg-primary/10 border-primary shadow-md' 
+                : 'bg-muted/50 hover:bg-muted border-border'
+            }`}
+            onClick={() => setInvestmentType('active')}
+          >
+            <CardContent className="p-4">
+              <div className="text-center">
+                <div className="text-lg font-semibold mb-1">Active Investment</div>
+                <div className="text-sm text-muted-foreground">
+                  {bondData.filter(bond => !bond.matured).length} bonds
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card 
+            className={`cursor-pointer transition-all duration-200 ${
+              investmentType === 'matured' 
+                ? 'bg-primary/10 border-primary shadow-md' 
+                : 'bg-muted/50 hover:bg-muted border-border'
+            }`}
+            onClick={() => setInvestmentType('matured')}
+          >
+            <CardContent className="p-4">
+              <div className="text-center">
+                <div className="text-lg font-semibold mb-1">Matured Investment</div>
+                <div className="text-sm text-muted-foreground">
+                  {bondData.filter(bond => bond.matured).length} bonds
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
       
       <CardContent className="space-y-6">
         {/* Chart */}
