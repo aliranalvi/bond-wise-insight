@@ -527,49 +527,58 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           </div>
         )}
         
-        {/* Table */}
-          <div className="relative">
-          
-          <div className="border rounded-lg overflow-hidden">
-            <div ref={tableRef} className="overflow-auto max-h-96 relative">
-              <Table>
-                <TableHeader>
-                  <TableRow className="sticky top-0 z-30 bg-muted border-border">
-                    <TableHead 
-                      className="font-semibold sticky left-0 top-0 bg-muted z-40 min-w-48 border-r border-border cursor-pointer hover:bg-muted/80"
+        {/* Modern Table */}
+        <div className="relative">
+          <div className="border rounded-lg overflow-hidden bg-card">
+            <div 
+              ref={tableRef} 
+              className="relative max-h-96 overflow-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border hover:scrollbar-thumb-muted-foreground"
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'hsl(var(--border)) transparent'
+              }}
+            >
+              {/* Custom Table Container */}
+              <div className="min-w-full">
+                {/* Sticky Header */}
+                <div className="sticky top-0 z-30 bg-muted border-b border-border">
+                  <div className="flex min-w-full">
+                    {/* Sticky First Column Header */}
+                    <div 
+                      className="sticky left-0 z-40 bg-muted border-r border-border min-w-48 p-3 font-semibold cursor-pointer hover:bg-muted/80 flex items-center space-x-2"
                       onClick={() => handleSort('issuer')}
                     >
-                      <div className="flex items-center space-x-2">
-                        <span>Bond Issuer</span>
-                        {sortField === 'issuer' && (
-                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead className="font-semibold text-center sticky top-0 bg-muted z-30 border-r border-border min-w-12">
-                      #
-                    </TableHead>
-                    <TableHead className="font-semibold text-right sticky top-0 bg-primary/5 z-30 border-r border-border min-w-32">Principal Remaining</TableHead>
-                    <TableHead className="font-semibold text-right sticky top-0 bg-success/5 z-30 border-r border-border min-w-32">Interest Paid</TableHead>
-                    <TableHead 
-                      className="font-semibold text-right sticky top-0 bg-muted z-30 border-r border-border cursor-pointer hover:bg-muted/80"
-                      onClick={() => handleSort('investment')}
-                    >
-                      <div className="flex items-center justify-end space-x-2">
+                      <span>Bond Issuer</span>
+                      {sortField === 'issuer' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      )}
+                    </div>
+                    
+                    {/* Other Headers */}
+                    <div className="flex">
+                      <div className="min-w-12 p-3 text-center font-semibold border-r border-border">#</div>
+                      <div className="min-w-32 p-3 text-right font-semibold border-r border-border bg-primary/5">Principal Remaining</div>
+                      <div className="min-w-32 p-3 text-right font-semibold border-r border-border bg-success/5">Interest Paid</div>
+                      <div 
+                        className="min-w-32 p-3 font-semibold border-r border-border cursor-pointer hover:bg-muted/80 flex items-center justify-end space-x-2"
+                        onClick={() => handleSort('investment')}
+                      >
                         <span>Investment</span>
                         {sortField === 'investment' && (
                           sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                         )}
                       </div>
-                    </TableHead>
-                    {allTimePeriods.map(period => (
-                      <TableHead key={period} className="font-semibold text-right sticky top-0 bg-muted z-30 min-w-24">
-                        {period}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+                      {allTimePeriods.map(period => (
+                        <div key={period} className="min-w-24 p-3 text-right font-semibold">
+                          {period}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table Body */}
+                <div>
                   {Object.entries(filteredPivotData).sort((a, b) => {
                     if (sortField === 'issuer') {
                       return sortDirection === 'asc' 
@@ -581,153 +590,155 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                         : issuerTotals[b[0]] - issuerTotals[a[0]];
                     }
                   }).map(([issuer, bonds]) => {
-                     const uniqueBondSeriesCount = Object.keys(bonds).length; // Count unique bond series (bondName|ISIN combinations)
-                     const isExpanded = expandedIssuers.has(issuer);
-                    
+                    const uniqueBondSeriesCount = Object.keys(bonds).length;
+                    const isExpanded = expandedIssuers.has(issuer);
+                   
                     return (
-                      <React.Fragment key={issuer}>
+                      <div key={issuer}>
                         {/* Issuer Row */}
-                        <TableRow className="border-border bg-muted/30 hover:bg-muted/50 cursor-pointer" onClick={() => toggleIssuer(issuer)}>
-                           <TableCell className="sticky left-0 bg-muted z-20 border-r border-border">
-                               <div className="flex items-center space-x-2">
-                                   {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                   <span className="font-semibold text-primary">{issuer}</span>
-                                   {showMaturityIndicators && issuerHasNearMaturity(issuer) && (
-                                     <UITooltip>
-                                       <TooltipTrigger asChild>
-                                         <Clock className="w-4 h-4 text-warning animate-pulse" />
-                                       </TooltipTrigger>
-                                       <TooltipContent>
-                                         <p>Has bonds maturing within 30 days</p>
-                                       </TooltipContent>
-                                     </UITooltip>
-                                   )}
-                                   {showMissedPaymentIndicators && issuerHasMissedPayments(issuer).length > 0 && (
-                                     <UITooltip>
-                                       <TooltipTrigger asChild>
-                                         <AlertTriangle className="w-4 h-4 text-destructive" />
-                                       </TooltipTrigger>
-                                       <TooltipContent>
-                                         <p>Interest payment missed for {issuerHasMissedPayments(issuer).length} months</p>
-                                       </TooltipContent>
-                                     </UITooltip>
-                                   )}
-                                 </div>
-                           </TableCell>
-                           <TableCell className="text-center font-semibold">
-                             {uniqueBondSeriesCount}
-                           </TableCell>
-                               <TableCell className="text-right font-semibold text-primary bg-primary/5">
-                                  {(() => {
-                                    // Group bonds by bondName + ISIN to handle multiple entries for same series
-                                    const bondSeries = new Map<string, { totalInvestment: number; repayments: RepaymentData[] }>();
-                                    
-                                    filteredData.filter(bond => bond.bondIssuer === issuer).forEach(bond => {
-                                      const bondKey = `${bond.bondName}|${bond.isin}`;
-                                      if (!bondSeries.has(bondKey)) {
-                                        bondSeries.set(bondKey, { totalInvestment: 0, repayments: repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin) });
-                                      }
-                                      bondSeries.get(bondKey)!.totalInvestment += bond.investedAmount;
-                                    });
-                                    
-                                    let totalRemaining = 0;
-                                    bondSeries.forEach(({ totalInvestment, repayments }) => {
-                                      const principalRepaid = repayments.reduce((sum, r) => sum + r.principalRepaid, 0);
-                                      totalRemaining += Math.max(0, totalInvestment - principalRepaid);
-                                    });
-                                    
-                                    return formatCurrency(totalRemaining);
-                                  })()}
-                                </TableCell>
-                                <TableCell className="text-right font-semibold text-success bg-success/5">
-                                 {(() => {
-                                   // Group bonds by bondName + ISIN to get unique bond series for this issuer
-                                   const bondSeries = new Map<string, RepaymentData[]>();
-                                   
-                                   filteredData.filter(bond => bond.bondIssuer === issuer).forEach(bond => {
-                                     const bondKey = `${bond.bondName}|${bond.isin}`;
-                                     if (!bondSeries.has(bondKey)) {
-                                       bondSeries.set(bondKey, repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin));
-                                     }
-                                   });
-                                   
-                                   let totalInterestPaid = 0;
-                                   bondSeries.forEach((repayments) => {
-                                     totalInterestPaid += repayments.reduce((sum, r) => sum + r.interestPaidAfterTDS, 0);
-                                   });
-                                   
-                                   return formatCurrency(totalInterestPaid);
-                                 })()}
-                               </TableCell>
-                           <TableCell className="text-right font-semibold text-primary">
-                               {formatCurrency(issuerTotals[issuer])}
-                             </TableCell>
-                           {allTimePeriods.map(period => {
-                            const total = Object.values(bonds).reduce((sum, timeData) => {
-                              return sum + (timeData[period] || 0);
-                            }, 0);
-                             return (
-                               <TableCell key={period} className="text-right font-medium">
-                                 {total > 0 ? formatCurrency(total) : '-'}
-                               </TableCell>
-                             );
-                          })}
-                        </TableRow>
+                        <div className="flex min-w-full border-b border-border bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors" onClick={() => toggleIssuer(issuer)}>
+                          {/* Sticky First Column */}
+                          <div className="sticky left-0 z-20 bg-muted/30 hover:bg-muted/50 border-r border-border min-w-48 p-3 transition-colors">
+                            <div className="flex items-center space-x-2">
+                              {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                              <span className="font-semibold text-primary">{issuer}</span>
+                              {showMaturityIndicators && issuerHasNearMaturity(issuer) && (
+                                <UITooltip>
+                                  <TooltipTrigger asChild>
+                                    <Clock className="w-4 h-4 text-warning animate-pulse" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Has bonds maturing within 30 days</p>
+                                  </TooltipContent>
+                                </UITooltip>
+                              )}
+                              {showMissedPaymentIndicators && issuerHasMissedPayments(issuer).length > 0 && (
+                                <UITooltip>
+                                  <TooltipTrigger asChild>
+                                    <AlertTriangle className="w-4 h-4 text-destructive" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Interest payment missed for {issuerHasMissedPayments(issuer).length} months</p>
+                                  </TooltipContent>
+                                </UITooltip>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Other Columns */}
+                          <div className="flex">
+                            <div className="min-w-12 p-3 text-center font-semibold">{uniqueBondSeriesCount}</div>
+                            <div className="min-w-32 p-3 text-right font-semibold text-primary bg-primary/5">
+                              {(() => {
+                                const bondSeries = new Map<string, { totalInvestment: number; repayments: RepaymentData[] }>();
+                                
+                                filteredData.filter(bond => bond.bondIssuer === issuer).forEach(bond => {
+                                  const bondKey = `${bond.bondName}|${bond.isin}`;
+                                  if (!bondSeries.has(bondKey)) {
+                                    bondSeries.set(bondKey, { totalInvestment: 0, repayments: repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin) });
+                                  }
+                                  bondSeries.get(bondKey)!.totalInvestment += bond.investedAmount;
+                                });
+                                
+                                let totalRemaining = 0;
+                                bondSeries.forEach(({ totalInvestment, repayments }) => {
+                                  const principalRepaid = repayments.reduce((sum, r) => sum + r.principalRepaid, 0);
+                                  totalRemaining += Math.max(0, totalInvestment - principalRepaid);
+                                });
+                                
+                                return formatCurrency(totalRemaining);
+                              })()}
+                            </div>
+                            <div className="min-w-32 p-3 text-right font-semibold text-success bg-success/5">
+                              {(() => {
+                                const bondSeries = new Map<string, RepaymentData[]>();
+                                
+                                filteredData.filter(bond => bond.bondIssuer === issuer).forEach(bond => {
+                                  const bondKey = `${bond.bondName}|${bond.isin}`;
+                                  if (!bondSeries.has(bondKey)) {
+                                    bondSeries.set(bondKey, repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin));
+                                  }
+                                });
+                                
+                                let totalInterestPaid = 0;
+                                bondSeries.forEach((repayments) => {
+                                  totalInterestPaid += repayments.reduce((sum, r) => sum + r.interestPaidAfterTDS, 0);
+                                });
+                                
+                                return formatCurrency(totalInterestPaid);
+                              })()}
+                            </div>
+                            <div className="min-w-32 p-3 text-right font-semibold text-primary">
+                              {formatCurrency(issuerTotals[issuer])}
+                            </div>
+                            {allTimePeriods.map(period => {
+                              const total = Object.values(bonds).reduce((sum, timeData) => {
+                                return sum + (timeData[period] || 0);
+                              }, 0);
+                              return (
+                                <div key={period} className="min-w-24 p-3 text-right font-medium">
+                                  {total > 0 ? formatCurrency(total) : '-'}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                         
                         {/* Bond Series Rows */}
                         {isExpanded && Object.entries(bonds).map(([bondKey, timeData]) => {
                           const [bondName, isin] = bondKey.split('|');
                           return (
-                          <TableRow 
-                            key={bondKey} 
-                            className="border-border bg-background/50 hover:bg-muted/50 cursor-pointer transition-colors"
-                            onClick={() => handleBondClick(bondKey, issuer)}
-                          >
-                             <TableCell className="sticky left-0 bg-background z-20 pl-8 border-r border-border">
-                                 <div className="flex items-center space-x-2">
-                                   <Calendar className="w-3 h-3 text-muted-foreground" />
-                                   <span className="text-sm hover:text-primary transition-colors">{bondName}</span>
-                                   {showMaturityIndicators && filteredData.some(bond => bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer && isNearMaturity(bond.maturityDate)) && (
-                                     <UITooltip>
-                                       <TooltipTrigger asChild>
-                                         <Clock className="w-4 h-4 text-warning animate-pulse" />
-                                       </TooltipTrigger>
-                                       <TooltipContent>
-                                         <p>Matures within 30 days</p>
-                                       </TooltipContent>
-                                     </UITooltip>
-                                   )}
-                                   {showMissedPaymentIndicators && hasMissedInterestPayments(bondKey, issuer).length > 0 && (
-                                     <UITooltip>
-                                       <TooltipTrigger asChild>
-                                         <AlertTriangle className="w-4 h-4 text-destructive" />
-                                       </TooltipTrigger>
-                                       <TooltipContent>
-                                         <p>Interest payment missed for {hasMissedInterestPayments(bondKey, issuer).length} months</p>
-                                       </TooltipContent>
-                                     </UITooltip>
-                                   )}
-                                 </div>
-                             </TableCell>
-                             <TableCell className="text-center text-sm">
-                               -
-                             </TableCell>
-                                <TableCell className="text-right text-sm bg-primary/5">
-                                   {(() => {
-                                     // Aggregate all investments for this bond series (bondName + ISIN)
-                                     const bondInvestments = filteredData.filter(bond => 
-                                       bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer
-                                     );
-                                     if (bondInvestments.length === 0) return '-';
-                                     
-                                     const totalInvestment = bondInvestments.reduce((sum, bond) => sum + bond.investedAmount, 0);
-                                     const bondRepayments = repaymentData.filter(r => r.bondName === bondName && r.isin === isin);
-                                     const principalRepaid = bondRepayments.reduce((sum, r) => sum + r.principalRepaid, 0);
-                                     const remaining = Math.max(0, totalInvestment - principalRepaid);
-                                     return formatCurrency(remaining);
-                                   })()}
-                                 </TableCell>
-                                 <TableCell className="text-right text-sm text-success bg-success/5">
+                            <div 
+                              key={bondKey} 
+                              className="flex min-w-full border-b border-border bg-background/50 hover:bg-muted/50 cursor-pointer transition-colors"
+                              onClick={() => handleBondClick(bondKey, issuer)}
+                            >
+                              {/* Sticky First Column */}
+                              <div className="sticky left-0 z-20 bg-background/50 hover:bg-muted/50 border-r border-border min-w-48 p-3 pl-8 transition-colors">
+                                <div className="flex items-center space-x-2">
+                                  <Calendar className="w-3 h-3 text-muted-foreground" />
+                                  <span className="text-sm hover:text-primary transition-colors">{bondName}</span>
+                                  {showMaturityIndicators && filteredData.some(bond => bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer && isNearMaturity(bond.maturityDate)) && (
+                                    <UITooltip>
+                                      <TooltipTrigger asChild>
+                                        <Clock className="w-4 h-4 text-warning animate-pulse" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Matures within 30 days</p>
+                                      </TooltipContent>
+                                    </UITooltip>
+                                  )}
+                                  {showMissedPaymentIndicators && hasMissedInterestPayments(bondKey, issuer).length > 0 && (
+                                    <UITooltip>
+                                      <TooltipTrigger asChild>
+                                        <AlertTriangle className="w-4 h-4 text-destructive" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Interest payment missed for {hasMissedInterestPayments(bondKey, issuer).length} months</p>
+                                      </TooltipContent>
+                                    </UITooltip>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Other Columns */}
+                              <div className="flex">
+                                <div className="min-w-12 p-3 text-center text-sm">-</div>
+                                <div className="min-w-32 p-3 text-right text-sm bg-primary/5">
+                                  {(() => {
+                                    const bondInvestments = filteredData.filter(bond => 
+                                      bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer
+                                    );
+                                    if (bondInvestments.length === 0) return '-';
+                                    
+                                    const totalInvestment = bondInvestments.reduce((sum, bond) => sum + bond.investedAmount, 0);
+                                    const bondRepayments = repaymentData.filter(r => r.bondName === bondName && r.isin === isin);
+                                    const principalRepaid = bondRepayments.reduce((sum, r) => sum + r.principalRepaid, 0);
+                                    const remaining = Math.max(0, totalInvestment - principalRepaid);
+                                    return formatCurrency(remaining);
+                                  })()}
+                                </div>
+                                <div className="min-w-32 p-3 text-right text-sm text-success bg-success/5">
                                   {(() => {
                                     const bondDetails = filteredData.find(bond => bond.bondName === bondName && bond.isin === isin && bond.bondIssuer === issuer);  
                                     if (!bondDetails) return '-';
@@ -735,90 +746,92 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
                                     const interestRepaid = bondRepayments.reduce((sum, r) => sum + r.interestPaidAfterTDS, 0);
                                     return formatCurrency(interestRepaid);
                                   })()}
-                                </TableCell>
-                               <TableCell className="text-right text-sm">
-                                 {formatCurrency(Object.values(timeData).reduce((sum, amount) => sum + amount, 0))}
-                               </TableCell>
-                             {allTimePeriods.map(period => (
-                               <TableCell key={period} className="text-right text-sm">
-                                 {timeData[period] ? formatCurrency(timeData[period]) : '-'}
-                               </TableCell>
-                             ))}
-                          </TableRow>
+                                </div>
+                                <div className="min-w-32 p-3 text-right text-sm">
+                                  {formatCurrency(Object.values(timeData).reduce((sum, amount) => sum + amount, 0))}
+                                </div>
+                                {allTimePeriods.map(period => (
+                                  <div key={period} className="min-w-24 p-3 text-right text-sm">
+                                    {timeData[period] ? formatCurrency(timeData[period]) : '-'}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           );
                         })}
-                      </React.Fragment>
-                     );
-                   })}
-                   
-                    {/* Total Row */}
-                    <TableRow className="border-border bg-muted font-bold">
-                      <TableCell className="sticky left-0 bg-muted z-20 border-r border-border font-bold">
-                        Total
-                      </TableCell>
-                      <TableCell className="text-center font-bold">
-                        -
-                      </TableCell>
-                          <TableCell className="text-right font-bold text-primary bg-primary/5">
-                            {(() => {
-                              // Group all bonds by bondName + ISIN to handle multiple entries for same series
-                              const bondSeries = new Map<string, { totalInvestment: number; repayments: RepaymentData[] }>();
-                              
-                              filteredData.forEach(bond => {
-                                const bondKey = `${bond.bondName}|${bond.isin}`;
-                                if (!bondSeries.has(bondKey)) {
-                                  bondSeries.set(bondKey, { totalInvestment: 0, repayments: repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin) });
-                                }
-                                bondSeries.get(bondKey)!.totalInvestment += bond.investedAmount;
-                              });
-                              
-                              let totalRemaining = 0;
-                              bondSeries.forEach(({ totalInvestment, repayments }) => {
-                                const principalRepaid = repayments.reduce((sum, r) => sum + r.principalRepaid, 0);
-                                totalRemaining += Math.max(0, totalInvestment - principalRepaid);
-                              });
-                              
-                              return formatCurrency(totalRemaining);
-                            })()}
-                          </TableCell>
-                           <TableCell className="text-right font-bold text-success bg-success/5">
-                            {(() => {
-                              // Group all bonds by bondName + ISIN to get unique bond series
-                              const bondSeries = new Map<string, RepaymentData[]>();
-                              
-                              filteredData.forEach(bond => {
-                                const bondKey = `${bond.bondName}|${bond.isin}`;
-                                if (!bondSeries.has(bondKey)) {
-                                  bondSeries.set(bondKey, repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin));
-                                }
-                              });
-                              
-                              let totalInterestPaid = 0;
-                              bondSeries.forEach((repayments) => {
-                                totalInterestPaid += repayments.reduce((sum, r) => sum + r.interestPaidAfterTDS, 0);
-                              });
-                              
-                              return formatCurrency(totalInterestPaid);
-                            })()}
-                          </TableCell>
-                       <TableCell className="text-right font-bold text-primary">
-                         {formatCurrency(Object.values(issuerTotals).reduce((sum, amount) => sum + amount, 0))}
-                       </TableCell>
-                     {allTimePeriods.map(period => {
-                       const periodTotal = Object.values(filteredPivotData).reduce((sum, bonds) => {
-                         return sum + Object.values(bonds).reduce((bondSum, timeData) => {
-                           return bondSum + (timeData[period] || 0);
-                         }, 0);
-                       }, 0);
-                       return (
-                         <TableCell key={period} className="text-right font-bold">
-                           {periodTotal > 0 ? formatCurrency(periodTotal) : '-'}
-                         </TableCell>
-                       );
-                     })}
-                   </TableRow>
-                 </TableBody>
-              </Table>
+                      </div>
+                    );
+                  })}
+                  
+                  {/* Total Row */}
+                  <div className="flex min-w-full border-b border-border bg-muted font-bold">
+                    {/* Sticky First Column */}
+                    <div className="sticky left-0 z-20 bg-muted border-r border-border min-w-48 p-3 font-bold">
+                      Total
+                    </div>
+                    
+                    {/* Other Columns */}
+                    <div className="flex">
+                      <div className="min-w-12 p-3 text-center font-bold">-</div>
+                      <div className="min-w-32 p-3 text-right font-bold text-primary bg-primary/5">
+                        {(() => {
+                          const bondSeries = new Map<string, { totalInvestment: number; repayments: RepaymentData[] }>();
+                          
+                          filteredData.forEach(bond => {
+                            const bondKey = `${bond.bondName}|${bond.isin}`;
+                            if (!bondSeries.has(bondKey)) {
+                              bondSeries.set(bondKey, { totalInvestment: 0, repayments: repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin) });
+                            }
+                            bondSeries.get(bondKey)!.totalInvestment += bond.investedAmount;
+                          });
+                          
+                          let totalRemaining = 0;
+                          bondSeries.forEach(({ totalInvestment, repayments }) => {
+                            const principalRepaid = repayments.reduce((sum, r) => sum + r.principalRepaid, 0);
+                            totalRemaining += Math.max(0, totalInvestment - principalRepaid);
+                          });
+                          
+                          return formatCurrency(totalRemaining);
+                        })()}
+                      </div>
+                      <div className="min-w-32 p-3 text-right font-bold text-success bg-success/5">
+                        {(() => {
+                          const bondSeries = new Map<string, RepaymentData[]>();
+                          
+                          filteredData.forEach(bond => {
+                            const bondKey = `${bond.bondName}|${bond.isin}`;
+                            if (!bondSeries.has(bondKey)) {
+                              bondSeries.set(bondKey, repaymentData.filter(r => r.bondName === bond.bondName && r.isin === bond.isin));
+                            }
+                          });
+                          
+                          let totalInterestPaid = 0;
+                          bondSeries.forEach((repayments) => {
+                            totalInterestPaid += repayments.reduce((sum, r) => sum + r.interestPaidAfterTDS, 0);
+                          });
+                          
+                          return formatCurrency(totalInterestPaid);
+                        })()}
+                      </div>
+                      <div className="min-w-32 p-3 text-right font-bold text-primary">
+                        {formatCurrency(Object.values(issuerTotals).reduce((sum, amount) => sum + amount, 0))}
+                      </div>
+                      {allTimePeriods.map(period => {
+                        const periodTotal = Object.values(filteredPivotData).reduce((sum, bonds) => {
+                          return sum + Object.values(bonds).reduce((bondSum, timeData) => {
+                            return bondSum + (timeData[period] || 0);
+                          }, 0);
+                        }, 0);
+                        return (
+                          <div key={period} className="min-w-24 p-3 text-right font-bold">
+                            {periodTotal > 0 ? formatCurrency(periodTotal) : '-'}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
