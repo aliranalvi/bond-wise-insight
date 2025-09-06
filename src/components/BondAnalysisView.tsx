@@ -52,6 +52,7 @@ interface BondAnalysisViewProps {
   pivotData: PivotData;
   bondData: BondData[];
   repaymentData: RepaymentData[];
+  investmentType: 'active' | 'matured';
 }
 
 type DurationFilter = 'This Year' | 'Last Year' | 'All Time';
@@ -60,7 +61,7 @@ type DurationView = 'Years' | 'Quarters' | 'Months';
 type SortField = 'issuer' | 'investment';
 type SortDirection = 'asc' | 'desc';
 
-export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, bondData, repaymentData }) => {
+export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, bondData, repaymentData, investmentType }) => {
   const [durationFilter, setDurationFilter] = useState<DurationFilter>('All Time');
   const [durationView, setDurationView] = useState<DurationView>('Months');
   const [expandedIssuers, setExpandedIssuers] = useState<Set<string>>(new Set());
@@ -195,14 +196,16 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
     })}`;
   };
 
-  // Filter data based on duration filter
+  // Filter data based on duration filter and investment type
   const filteredData = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const lastYear = currentYear - 1;
 
     return bondData.filter(bond => {
-      if (bond.matured) return false; // Only active bonds
+      // Filter by investment type (active vs matured)
+      if (investmentType === 'active' && bond.matured) return false;
+      if (investmentType === 'matured' && !bond.matured) return false;
       
       const investmentDate = new Date(bond.dateOfInvestment.split('/').reverse().join('-'));
       const investmentYear = investmentDate.getFullYear();
@@ -217,7 +220,7 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
           return true;
       }
     });
-  }, [bondData, durationFilter]);
+  }, [bondData, durationFilter, investmentType]);
 
   // Generate filtered pivot data
   const filteredPivotData = useMemo(() => {
@@ -386,9 +389,11 @@ export const BondAnalysisView: React.FC<BondAnalysisViewProps> = ({ pivotData, b
       <CardHeader>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <CardTitle className="text-xl font-bold">Active Investment Analysis</CardTitle>
+            <CardTitle className="text-xl font-bold">
+              {investmentType === 'active' ? 'Active Investment Analysis' : 'Matured Investment Analysis'}
+            </CardTitle>
             <CardDescription>
-              (excludes matured bonds)
+              {investmentType === 'active' ? '(excludes matured bonds)' : '(includes only matured bonds)'}
             </CardDescription>
           </div>
           

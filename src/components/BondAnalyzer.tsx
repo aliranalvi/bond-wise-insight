@@ -50,6 +50,7 @@ export const BondAnalyzer = () => {
   const [pivotData, setPivotData] = useState<PivotData>({});
   const [isUploading, setIsUploading] = useState(false);
   const [hasData, setHasData] = useState(false);
+  const [selectedInvestmentType, setSelectedInvestmentType] = useState<'active' | 'matured'>('active');
   const { toast } = useToast();
 
   const extractBondIssuer = (bondName: string): string => {
@@ -544,7 +545,14 @@ export const BondAnalyzer = () => {
             
             <Tooltip>
               <TooltipTrigger asChild>
-                <Card className="shadow-soft bg-gradient-card border-0 flex-1">
+                <Card 
+                  className={`shadow-soft border-0 flex-1 cursor-pointer transition-all duration-200 hover:shadow-glow ${
+                    selectedInvestmentType === 'active' 
+                      ? 'bg-success/20 border-2 border-success ring-2 ring-success/20' 
+                      : 'bg-gradient-card hover:bg-success/10'
+                  }`}
+                  onClick={() => setSelectedInvestmentType('active')}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
@@ -586,7 +594,14 @@ export const BondAnalyzer = () => {
             
             <Tooltip>
               <TooltipTrigger asChild>
-                <Card className="shadow-soft bg-gradient-card border-0 flex-1">
+                <Card 
+                  className={`shadow-soft border-0 flex-1 cursor-pointer transition-all duration-200 hover:shadow-glow ${
+                    selectedInvestmentType === 'matured' 
+                      ? 'bg-warning/20 border-2 border-warning ring-2 ring-warning/20' 
+                      : 'bg-gradient-card hover:bg-warning/10'
+                  }`}
+                  onClick={() => setSelectedInvestmentType('matured')}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
@@ -630,7 +645,12 @@ export const BondAnalyzer = () => {
         </TooltipProvider>
         
         {/* Combined Chart and Table */}
-        <BondAnalysisView pivotData={pivotData} bondData={bondData} repaymentData={repaymentData} />
+        <BondAnalysisView 
+          pivotData={pivotData} 
+          bondData={bondData} 
+          repaymentData={repaymentData} 
+          investmentType={selectedInvestmentType}
+        />
       </div>
     </div>
   );
